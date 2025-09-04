@@ -78,13 +78,13 @@ function AdapterConfig:run_command(cmd, args, env)
 			args = args,
 			env = env,
 			name = "Database command",
-			strategy = "terminal", -- or "jobstart", "toggleterm", etc.
+			strategy = "terminal",
 			components = {
 				{
 					"open_output",
-					direction = "dock", -- Options: "dock", "float", "tab", "vertical", "horizontal"
-					focus = true, -- Focus the output window when opened
-					on_complete = "always", -- Open output when task completes ("always", "success", "failure", "never")
+					direction = "dock",
+					focus = false,
+					on_complete = "always",
 				},
 				"default",
 			},
