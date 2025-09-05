@@ -1,19 +1,17 @@
 local config = require("db-cli-adapter.config")
-local M = {
-	--- @type DbCliAdapter.Config
-	config = config.default,
-}
+local M = {}
 
 --- Initialize the configuration for the db-cli-adapter plugin.
 --- @param opts DbCliAdapter.Config|nil User-provided configuration options to override defaults
 function M.setup(opts)
-	M.config = vim.tbl_deep_extend("force", M.config, opts or {})
+	local new_config = vim.tbl_deep_extend("force", config.current or config.default, opts or {})
+	config.update(new_config)
 end
 
 --- Retrieves a list of available database connections.
 ---
 --- This function gathers all available connections based on the configured sources
---- in `M.config.sources`. If `cache_only` is set to `true`, it will return cached
+--- in `config.current.sources`. If `cache_only` is set to `true`, it will return cached
 --- connections if they are available, avoiding a re-fetch from the source files.
 ---
 --- The sources can be file paths or functions returning file paths containing
@@ -32,7 +30,7 @@ function M.get_available_connections(cache_only)
 	end
 
 	local connections = {}
-	for key, source_path in pairs(M.config.sources) do
+	for key, source_path in pairs(config.current.sources) do
 		if type(source_path) == "function" then
 			source_path = source_path()
 		end
@@ -41,7 +39,11 @@ function M.get_available_connections(cache_only)
 			local decoded = vim.fn.json_decode(table.concat(file_content, "\n"))
 			if decoded and type(decoded) == "table" then
 				for name, conn in pairs(decoded) do
-					connections[string.format("%s (from %s)", name, key)] = conn
+					local source_icon = config.current.source_icons[key] or key
+					local adapter_icon = config.current.adapter_icons[conn.adapter]
+						or config.current.adapter_icons.default
+						or "󰪩"
+					connections[string.format("%s%s %s", source_icon, adapter_icon, name)] = conn
 				end
 			end
 		end
@@ -100,7 +102,7 @@ local function _run(query, opts)
 		vim.notify("Connection not found: " .. opts.connection, vim.log.levels.ERROR)
 		return
 	end
-	local adapter = M.config.adapters[connection.adapter]
+	local adapter = config.current.adapters[connection.adapter]
 	if not adapter then
 		vim.notify("Adapter not found: " .. tostring(connection.adapter), vim.log.levels.ERROR)
 		return
@@ -253,9 +255,9 @@ end
 --- the directory is created automatically.
 ---
 --- @param key string The key identifying the connections source in the configuration.
----                    The key must be present in `M.config.sources`.
+---                    The key must be present in `config.current.sources`.
 function M.edit_connections_source(key)
-	local source_path = M.config.sources[key]
+	local source_path = config.current.sources[key]
 	if type(source_path) == "function" then
 		source_path = source_path()
 	end

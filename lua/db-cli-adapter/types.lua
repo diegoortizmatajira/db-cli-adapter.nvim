@@ -13,3 +13,5 @@
 --- @class  DbCliAdapter.Config defines the configuration structure for DbCliAdapter
 --- @field adapters table<string, DbCliAdapter.AdapterConfig> List of adapter configurations
 --- @field sources table<string, string|fun():string> A mapping of source names to their configurations
+--- @field source_icons table<string, string> Icons for different connection sources
+--- @field adapter_icons table<string, string> Icons for different connection sources
