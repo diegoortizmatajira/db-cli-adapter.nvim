@@ -16,3 +16,4 @@ command! -range -nargs=0 DbCliRunAtCursor lua require("db-cli-adapter").run_at_c
 command! -nargs=0 DbCliRunBuffer lua require("db-cli-adapter").run_buffer()
 command! -nargs=0 DbCliSelectConnection lua require("db-cli-adapter").select_connection()
 command! -nargs=1 DbCliEditConnection lua require("db-cli-adapter").edit_connections_source(<q-args>)
+command! -nargs=0 DbCliSidebarToggle lua require("db-cli-adapter.sidebar").toggle()
