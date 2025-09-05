@@ -34,6 +34,15 @@ local C = {
 			mariadb = " ",
 			defautl = "󰪩 ",
 		},
+		sidebar = {
+			keybindings = {
+				toggle_expand = { "t", "<CR>" },
+				expand = { "o" },
+				collapse = { "c" },
+				quit = { "q" },
+				refresh = { "r" },
+			},
+		},
 	},
 	--- @type DbCliAdapter.Config|nil
 	current = nil,

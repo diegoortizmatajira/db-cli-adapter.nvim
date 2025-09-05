@@ -1,63 +1,121 @@
 local core = require("db-cli-adapter.core")
+local config = require("db-cli-adapter.config").current
+
+local Split = require("nui.split")
+local NuiTree = require("nui.tree")
+local NuiLine = require("nui.line")
+local event = require("nui.utils.autocmd").event
+
 local M = {
-	sidebar = nil,
+	split = nil,
+	tree = nil,
 }
-local function create_sidebar(position)
-	local width = 30
-	local buf = vim.api.nvim_create_buf(false, true) -- Create a new empty buffer
 
-	-- Determine the split direction and position
-	if position == "right" then
-		vim.cmd(width .. "vsplit") -- Create a vertical split on the right
-	else
-		vim.cmd(width .. "vsplit") -- Create a vertical split; default to left
+function M.init()
+	if not config then
+		vim.notify("DbCliAdapter: Configuration not found.", vim.log.levels.ERROR)
+		return
 	end
-
-	vim.api.nvim_win_set_buf(0, buf) -- Set the buffer to the current window
-
-	-- Disable line numbers, gutter decorations, and make buffer read-only
-	vim.api.nvim_set_option_value("number", false, { scope = "local" })
-	vim.api.nvim_set_option_value("relativenumber", false, { scope = "local" })
-	vim.api.nvim_set_option_value("signcolumn", "no", { scope = "local" })
-	vim.api.nvim_set_option_value("modifiable", false, { scope = "local" })
-
-	return { buf = buf, win = vim.api.nvim_get_current_win() }
+	M.split = Split({
+		relative = "editor",
+		position = "right",
+		size = "30%",
+	})
+	M.split:mount()
+	M.tree = NuiTree({
+		bufnr = M.split.bufnr,
+		nodes = {
+			NuiTree.Node({ text = "Root" }, {
+				NuiTree.Node({ text = "Child 1" }),
+				NuiTree.Node({ text = "Child 2" }, {
+					NuiTree.Node({ text = "Grandchild 1" }),
+				}),
+			}),
+		},
+		prepare_node = function(node)
+			local line = NuiLine()
+			line:append(string.rep("  ", node:get_depth() - 1))
+			line:append(node:has_children() and (node:is_expanded() and " " or " ") or "  ")
+			line:append(node.text)
+			return line
+		end,
+		buf_options = {
+			buftype = "nofile",
+			filetype = "db-cli-sidebar",
+			swapfile = false,
+			bufhidden = "hide",
+		},
+		win_options = {},
+	})
+	M.tree:render()
+	--- Map keys for toggling expand/collapse of a tree node
+	vim.tbl_map(function(key)
+		M.split:map("n", key, function()
+			local node = M.tree:get_node()
+			if node and node:has_children() then
+				if node:is_expanded() then
+					node:collapse()
+				else
+					node:expand()
+				end
+				M.tree:render()
+			end
+		end)
+	end, config.sidebar.keybindings.toggle_expand)
+	-- Map keys for expanding a tree node
+	vim.tbl_map(function(key)
+		M.split:map("n", key, function()
+			local node = M.tree:get_node()
+			if node and node:has_children() then
+				node:expand()
+				M.tree:render()
+			end
+		end)
+	end, config.sidebar.keybindings.expand)
+	-- Map keys for collapsing a tree node
+	vim.tbl_map(function(key)
+		M.split:map("n", key, function()
+			local node = M.tree:get_node()
+			if node and node:has_children() then
+				node:collapse()
+				M.tree:render()
+			end
+		end)
+	end, config.sidebar.keybindings.collapse)
+	-- Map keys for refreshing the sidebar
+	vim.tbl_map(function(key)
+		M.split:map("n", key, function()
+			M.refresh()
+		end)
+	end, config.sidebar.keybindings.refresh)
+	-- Map keys for quitting the sidebar
+	vim.tbl_map(function(key)
+		M.split:map("n", key, function()
+			M.split:hide()
+		end)
+	end, config.sidebar.keybindings.quit)
 end
 
-function M.refresh() end
+function M.refresh()
+	vim.notify("DbCliAdapter: Refreshing sidebar...", vim.log.levels.INFO)
+end
 
-function M.toggle(position, on_display)
-	position = position or "right" -- Default to right if no position is provided
-
-	-- Close the sidebar if it exists
-	if M.sidebar and vim.api.nvim_win_is_valid(M.sidebar.win) then
-		vim.api.nvim_win_close(M.sidebar.win, true)
-		M.sidebar = nil
-		vim.notify("Sidebar closed", vim.log.levels.INFO)
-		return
-	end
-
-	-- Create a new sidebar
-	M.sidebar = create_sidebar(position)
-
-	-- Set filetype to 'db-cli-sidebar' if sidebar buffer exists
-	if M.sidebar and M.sidebar.buf then
-		vim.api.nvim_set_option_value("filetype", "db-cli-sidebar", { scope = "local", buf = M.sidebar.buf })
-	end
-
-	local function local_on_display()
-		-- Trigger the on_display callback if provided
-		if on_display and type(on_display) == "function" then
-			on_display()
+function M.toggle()
+	if M.split then
+		if M.split.winid and vim.api.nvim_win_is_valid(M.split.winid) then
+			M.split:hide()
+		else
+			M.split:show()
+			M.refresh()
+		end
+	else
+		M.init()
+		-- Ensure a database connection is selected
+		if not core.buffer_has_db_connection() then
+			core.select_connection(M.refresh)
+			return
 		end
 		M.refresh()
-		vim.notify("Sidebar opened", vim.log.levels.INFO)
 	end
-	-- Ensure a database connection is selected
-	if not core.buffer_has_db_connection() then
-		core.select_connection(local_on_display)
-		return
-	end
-	local_on_display()
 end
 return M
