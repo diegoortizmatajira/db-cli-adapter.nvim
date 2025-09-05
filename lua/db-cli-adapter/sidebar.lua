@@ -1,3 +1,4 @@
+local core = require("db-cli-adapter.core")
 local M = {
 	sidebar = nil,
 }
@@ -23,6 +24,8 @@ local function create_sidebar(position)
 	return { buf = buf, win = vim.api.nvim_get_current_win() }
 end
 
+function M.refresh() end
+
 function M.toggle(position, on_display)
 	position = position or "right" -- Default to right if no position is provided
 
@@ -42,11 +45,19 @@ function M.toggle(position, on_display)
 		vim.api.nvim_set_option_value("filetype", "db-cli-sidebar", { scope = "local", buf = M.sidebar.buf })
 	end
 
-	-- Trigger the on_display callback if provided
-	if on_display and type(on_display) == "function" then
-		on_display()
+	local function local_on_display()
+		-- Trigger the on_display callback if provided
+		if on_display and type(on_display) == "function" then
+			on_display()
+		end
+		M.refresh()
+		vim.notify("Sidebar opened", vim.log.levels.INFO)
 	end
-
-	vim.notify("Sidebar opened", vim.log.levels.INFO)
+	-- Ensure a database connection is selected
+	if not core.buffer_has_db_connection() then
+		core.select_connection(local_on_display)
+		return
+	end
+	local_on_display()
 end
 return M
