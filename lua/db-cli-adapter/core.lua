@@ -32,9 +32,9 @@ function M.get_available_connections(cache_only)
 			local decoded = vim.fn.json_decode(table.concat(file_content, "\n"))
 			if decoded and type(decoded) == "table" then
 				for name, conn in pairs(decoded) do
-					local source_icon = config.current.source_icons[key] or key
-					local adapter_icon = config.current.adapter_icons[conn.adapter]
-						or config.current.adapter_icons.default
+					local source_icon = config.current.icons.source[key] or key
+					local adapter_icon = config.current.icons.adapter[conn.adapter]
+						or config.current.icons.adapter.default
 						or "󰪩"
 					connections[string.format("%s%s %s", source_icon, adapter_icon, name)] = conn
 				end

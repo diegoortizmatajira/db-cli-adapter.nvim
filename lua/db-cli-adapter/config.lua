@@ -23,16 +23,18 @@ local C = {
 			global = vim.fn.stdpath("data") .. "/db-cli-adapter/global-connections.json",
 			workspace = get_workspace_source,
 		},
-		source_icons = {
-			global = "🌐",
-			workspace = " ",
-		},
-		adapter_icons = {
-			psql = " ",
-			sqlite = " ",
-			mysql = " ",
-			mariadb = " ",
-			defautl = "󰪩 ",
+		icons = {
+			source = {
+				global = "🌐",
+				workspace = " ",
+			},
+			adapter = {
+				psql = " ",
+				sqlite = " ",
+				mysql = " ",
+				mariadb = " ",
+				defautl = "󰪩 ",
+			},
 		},
 		sidebar = {
 			keybindings = {

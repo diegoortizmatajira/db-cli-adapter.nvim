@@ -20,9 +20,12 @@
 --- @class DbCliAdapter.SidebarConfig
 --- @field keybindings DbCliAdapter.SidebarKeybindingsConfig Keybindings for sidebar actions
 
+--- @class  DbCliAdapter.IconConfig defines the configuration structure for DbCliAdapter
+--- @field source table<string, string> Icons for different connection sources
+--- @field adapter table<string, string> Icons for different connection sources
+
 --- @class  DbCliAdapter.Config defines the configuration structure for DbCliAdapter
 --- @field adapters table<string, DbCliAdapter.AdapterConfig> List of adapter configurations
 --- @field sources table<string, string|fun():string> A mapping of source names to their configurations
---- @field source_icons table<string, string> Icons for different connection sources
---- @field adapter_icons table<string, string> Icons for different connection sources
 --- @field sidebar DbCliAdapter.SidebarConfig Configuration for the sidebar
+--- @field icons DbCliAdapter.IconConfig Configuration for icons used in the UI
