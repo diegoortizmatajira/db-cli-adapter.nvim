@@ -5,7 +5,10 @@ require("db-cli-adapter.adapter_config")
 --- @field filename string The name of the database to connect to
 
 --- @class DbCliAdapter.sqlite_adapter: DbCliAdapter.AdapterConfig
-local adapter = AdapterConfig:new("Sqlite (sqlite3)", "sqlite3")
+local adapter = AdapterConfig:new({
+	name = "Sqlite (sqlite3)",
+	command = "sqlite3",
+})
 
 --- Execute a SQL command using pgcli
 --- @param command string The SQL command to execute

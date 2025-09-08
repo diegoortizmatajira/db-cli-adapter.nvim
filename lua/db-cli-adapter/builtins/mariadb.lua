@@ -11,7 +11,10 @@ require("db-cli-adapter.adapter_config")
 --- @field skipssl boolean Whether to skip SSL verification
 
 --- @class DbCliAdapter.mariadb_adapter: DbCliAdapter.AdapterConfig
-local adapter = AdapterConfig:new("MariaDb (mariadb)", "/usr/bin/mariadb")
+local adapter = AdapterConfig:new({
+	name = "MariaDb (mariadb)",
+	command = "/usr/bin/mariadb",
+})
 
 --- Execute a SQL command using pgcli
 --- @param command string The SQL command to execute

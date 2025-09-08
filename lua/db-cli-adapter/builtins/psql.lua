@@ -10,7 +10,10 @@ require("db-cli-adapter.adapter_config")
 --- @field ssl boolean Whether to use SSL for the connection
 
 --- @class DbCliAdapter.psql_adapter: DbCliAdapter.AdapterConfig
-local adapter = AdapterConfig:new("PostgreSQL (psql)", "psql")
+local adapter = AdapterConfig:new({
+	name = "PostgreSQL (psql)",
+	command = "psql",
+})
 
 --- Execute a SQL command using pgcli
 --- @param command string The SQL command to execute

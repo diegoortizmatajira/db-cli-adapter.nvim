@@ -1,20 +1,20 @@
 --- @class DbCliAdapter.AdapterConfig defines the configuration for an individual adapter
 --- @field name string The name of the adapter
 --- @field command string The command to invoke the database CLI
+--- @field schemasQuery? string The query to list schemas in the database
+--- @field tablesQuery? string The query to list tables in the database
+--- @field viewsQuery? string The query to list views in the database
 AdapterConfig = {
 	name = "",
 	command = "",
 }
 
 --- Creates a new instance of AdapterConfig
---- @param name string The name of the adapter
---- @param command string The command to invoke the database CLI
+--- @param config DbCliAdapter.AdapterConfig
 --- @return DbCliAdapter.AdapterConfig A new instance of AdapterConfig
-function AdapterConfig:new(name, command)
-	local o = setmetatable({}, self)
+function AdapterConfig:new(config)
+	local o = setmetatable(config or {}, self)
 	self.__index = self
-	o.name = name
-	o.command = command
 	return o
 end
 

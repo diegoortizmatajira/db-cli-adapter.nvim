@@ -11,7 +11,10 @@ require("db-cli-adapter.adapter_config")
 --- @field skipssl boolean Whether to skip SSL verification
 
 --- @class DbCliAdapter.mysql_adapter: DbCliAdapter.AdapterConfig
-local adapter = AdapterConfig:new("Mysql (mysql)", "mysql")
+local adapter = AdapterConfig:new({
+	name = "Mysql (mysql)",
+	command = "mysql",
+})
 
 --- Execute a SQL command using pgcli
 --- @param command string The SQL command to execute
@@ -36,11 +39,11 @@ function adapter:query(command, params)
 		table.insert(args, string.format("--database=%s", params.dbname))
 	end
 	if params and params.ssl then
-        table.insert(args, "--ssl")
-    end
+		table.insert(args, "--ssl")
+	end
 	if params and params.skipssl then
-        table.insert(args, "--skip-ssl")
-    end
+		table.insert(args, "--skip-ssl")
+	end
 	table.insert(args, string.format("--execute=%s", command))
 
 	return self:run_command(self.command, args, env)
