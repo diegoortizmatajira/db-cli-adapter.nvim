@@ -18,7 +18,8 @@ local adapter = AdapterConfig:new({
 --- Execute a SQL command using pgcli
 --- @param command string The SQL command to execute
 --- @param params DbCliAdapter.pgsql_params Connection parameters
-function adapter:query(command, params)
+--- @param internal_execution boolean Whether this is an internal execution
+function adapter:query(command, params, internal_execution)
 	local args = {}
 	local env = {}
 
@@ -39,7 +40,12 @@ function adapter:query(command, params)
 	end
 	table.insert(args, string.format("--command=%s", command))
 
-	return self:run_command(self.command, args, env)
+	return self:run_command({
+		cmd = self.command,
+		args = args,
+		env = env,
+		internal_execution = internal_execution,
+	})
 end
 
 return adapter

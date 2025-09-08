@@ -13,7 +13,19 @@ AdapterConfig = {
 --- @param config DbCliAdapter.AdapterConfig
 --- @return DbCliAdapter.AdapterConfig A new instance of AdapterConfig
 function AdapterConfig:new(config)
-	local o = setmetatable(config or {}, self)
+	local data = vim.tbl_deep_extend("force", {
+		schemasQuery = [[SELECT schema_name FROM information_schema.schemata;]],
+		tablesQuery = [[SELECT table_name, table_schema
+		FROM information_schema.tables 
+		WHERE table_type='BASE TABLE' 
+		AND table_schema NOT IN ('pg_catalog', 'information_schema')
+		ORDER by table_name;]],
+		viewsQuery = [[SELECT table_name, table_schema
+        FROM information_schema.views 
+        WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+        ORDER by table_name;]],
+	}, config)
+	local o = setmetatable(data, self)
 	self.__index = self
 	return o
 end
@@ -27,8 +39,9 @@ end
 --- Sends a query to the database, should be overridden by specific adapters
 --- @param command string The SQL command to execute
 --- @param params DbCliAdapter.base_params Connection parameters
+--- @param internal_execution boolean|nil If true, the command is being executed internally and should not open a UI
 --- @return DbCliAdapter.Output A structured representation of the query result
-function AdapterConfig:query(command, params)
+function AdapterConfig:query(command, params, internal_execution)
 	vim.notify("Query method not implemented for adapter: " .. self.name, vim.log.levels.WARN)
 	return {
 		data = nil,
@@ -66,17 +79,23 @@ end
 
 --- Executes the database CLI command with the provided arguments
 --- and captures its output.
---- @param cmd string The command to execute (e.g., "psql", "mysql")
---- @param args string[] A list of arguments to pass to the command
---- @param env table<string, string>? Optional environment variables to set for the command
+--- @param opts DbCliAdapter.ExecutionOptions Execution options including command, args, env, and UI display preference
 --- @return DbCliAdapter.Output A structured representation of the parsed output
-function AdapterConfig:run_command(cmd, args, env)
+function AdapterConfig:run_command(opts)
+	if opts and opts.internal_execution then
+		return {
+			data = nil,
+			row_count = 0,
+			message = "Failed to execute command",
+		}
+	end
+	-- Use overseer.nvim to run the command and show output in a terminal window
 	local overseer = require("overseer")
-	local result = overseer
+	overseer
 		.new_task({
-			cmd = cmd,
-			args = args,
-			env = env,
+			cmd = opts.cmd,
+			args = opts.args,
+			env = opts.env,
 			name = "Database command",
 			strategy = "terminal",
 			components = {
@@ -94,6 +113,6 @@ function AdapterConfig:run_command(cmd, args, env)
 	return {
 		data = nil,
 		row_count = 0,
-		message = "Failed to execute command",
+		message = "Command sent to UI",
 	}
 end

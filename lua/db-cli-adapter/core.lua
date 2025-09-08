@@ -182,4 +182,18 @@ function M.buffer_has_db_connection()
 	return M.get_buffer_db_connection() ~= nil
 end
 
+function M.get_buffer_db_adapter()
+	local connection_name = M.get_buffer_db_connection()
+	if not connection_name then
+		return nil
+	end
+	local connections = M.get_available_connections(true)
+	local connection = connections[connection_name]
+	if not connection then
+		return nil
+	end
+	local adapter = config.current.adapters[connection.adapter]
+	return adapter
+end
+
 return M

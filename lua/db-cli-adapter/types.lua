@@ -29,3 +29,9 @@
 --- @field sources table<string, string|fun():string> A mapping of source names to their configurations
 --- @field sidebar DbCliAdapter.SidebarConfig Configuration for the sidebar
 --- @field icons DbCliAdapter.IconConfig Configuration for icons used in the UI
+
+--- @class DbCliAdapter.ExecutionOptions
+--- @field cmd string The command to execute
+--- @field args string[] A list of arguments to pass to the command
+--- @field env? table<string, string> Optional environment variables to set for the command
+--- @field internal_execution? boolean Whether to show the command output in the UI

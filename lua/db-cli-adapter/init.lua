@@ -16,6 +16,14 @@ function M.setup(opts)
 	vim.api.nvim_create_user_command("DbCliEditConnection", function(o)
 		M.edit_connections_source(o.args)
 	end, { nargs = "?" })
+	vim.api.nvim_create_user_command("DbCliTest", function()
+		local adapter = core.get_buffer_db_adapter()
+		if not adapter then
+			vim.notify("No adapter found for the current connection", vim.log.levels.ERROR)
+			return
+		end
+		core.run(adapter.tablesQuery)
+	end, { nargs = 0 })
 end
 
 --- Prompts the user to select a database connection from the available connections.
