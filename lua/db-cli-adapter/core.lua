@@ -139,20 +139,39 @@ end
 --- the function is evaluated to get the actual path. If the source file or directory does not exist,
 --- the directory is created automatically.
 ---
---- @param key string The key identifying the connections source in the configuration.
+--- @param key? string The key identifying the connections source in the configuration.
 ---                    The key must be present in `config.current.sources`.
 function M.edit_connections_source(key)
-	local source_path = config.current.sources[key]
-	if type(source_path) == "function" then
-		source_path = source_path()
+	local function edit(selected_key)
+		local source_path = config.current.sources[selected_key]
+		if type(source_path) == "function" then
+			source_path = source_path()
+		end
+		if not source_path or source_path == "" then
+			vim.notify(
+				string.format("No connections source file configured for key '%s'", selected_key),
+				vim.log.levels.ERROR
+			)
+			return
+		end
+		local source_dir = vim.fn.fnamemodify(source_path, ":h")
+		vim.fn.mkdir(source_dir, "p")
+		vim.cmd("edit " .. source_path)
 	end
-	if not source_path or source_path == "" then
-		vim.notify(string.format("No connections source file configured for key '%s'", key), vim.log.levels.ERROR)
-		return
+	if key and key ~= "" then
+		vim.notify("Editing connections source for key: " .. key)
+		edit(key)
+	else
+		vim.notify("Select which connections source to edit")
+		local source_names = vim.tbl_keys(config.current.sources)
+		vim.ui.select(source_names, { prompt = "Select which connections to edit:" }, function(choice)
+			if choice then
+				edit(choice)
+			else
+				vim.notify("No source selected", vim.log.levels.WARN)
+			end
+		end)
 	end
-	local source_dir = vim.fn.fnamemodify(source_path, ":h")
-	vim.fn.mkdir(source_dir, "p")
-	vim.cmd("edit " .. source_path)
 end
 
 function M.get_buffer_db_connection()

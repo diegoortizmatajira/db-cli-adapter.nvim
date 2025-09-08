@@ -7,6 +7,15 @@ local M = {}
 function M.setup(opts)
 	local new_config = vim.tbl_deep_extend("force", config.current or config.default, opts or {})
 	config.update(new_config)
+
+	-- Create user commands
+	vim.api.nvim_create_user_command("DbCliRunAtCursor", M.run_at_cursor, { range = true, nargs = 0 })
+	vim.api.nvim_create_user_command("DbCliRunBuffer", M.run_buffer, { nargs = 0 })
+	vim.api.nvim_create_user_command("DbCliSelectConnection", M.select_connection, { nargs = 0 })
+	vim.api.nvim_create_user_command("DbCliSidebarToggle", M.toggle_sidebar, { nargs = 0 })
+	vim.api.nvim_create_user_command("DbCliEditConnection", function(o)
+		M.edit_connections_source(o.args)
+	end, { nargs = "?" })
 end
 
 --- Prompts the user to select a database connection from the available connections.
@@ -133,7 +142,7 @@ end
 --- the function is evaluated to get the actual path. If the source file or directory does not exist,
 --- the directory is created automatically.
 ---
---- @param key string The key identifying the connections source in the configuration.
+--- @param key? string The key identifying the connections source in the configuration.
 ---                    The key must be present in `config.current.sources`.
 function M.edit_connections_source(key)
 	core.edit_connections_source(key)
