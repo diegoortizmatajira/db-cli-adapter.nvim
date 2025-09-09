@@ -8,6 +8,8 @@ local NuiLine = require("nui.line")
 local M = {
 	split = nil,
 	tree = nil,
+	tables_node = nil,
+	views_node = nil,
 }
 
 local newDatabase = function(text, children)
@@ -17,19 +19,35 @@ local newDatabase = function(text, children)
 		text = text,
 	}, children)
 end
-local newFolderNode = function(text, children)
+
+--- Create a new folder node
+---@param id string The unique identifier for the folder node
+---@param text string The display text for the folder node
+---@param children? table A list of child nodes within the folder
+---@return NuiTree.Node A new folder node
+local newFolderNode = function(id, text, children)
 	return NuiTree.Node({
+		id = id,
 		icon = config and config.icons.tree.folder,
 		icon_hl = config and config.highlight.tree.folder,
 		text = text,
 	}, children)
 end
 
-local newTableNode = function(text, children)
+--- Create a new table node
+---@param table_row string[] A table with two elements: table name and schema name
+---@param children? table A list of child nodes (columns)
+---@return NuiTree.Node
+local newTableNode = function(table_row, children)
+	local table_name, schema = unpack(table_row)
 	return NuiTree.Node({
+		id = string.format("table_%s_%s", schema, table_name),
 		icon = config and config.icons.tree.table,
 		icon_hl = config and config.highlight.tree.table,
-		text = text,
+		text = table_name,
+		table_name = table_name,
+		schema = schema,
+		description = schema and ("(" .. schema .. ")") or nil,
 	}, children)
 end
 
@@ -56,30 +74,51 @@ function M.init()
 		size = "30%",
 	})
 	M.split:mount()
+	M.tables_node = newFolderNode("tables_node", "Tables", {
+		newTableNode({ "Table 1", "1" }, {
+			newColumnNode({ "Field 1", true, "uuid" }),
+			newColumnNode({ "Field 2", false, "int" }),
+			newColumnNode({ "Field 3", false, "varchar(255)" }),
+			newColumnNode({ "Field 4", false, "boolean" }),
+		}),
+		newTableNode({ "Table 2", "2" }, {
+			newColumnNode({ "Field 1", true, "uuid" }),
+			newColumnNode({ "Field 2", false, "int" }),
+			newColumnNode({ "Field 3", false, "varchar(255)" }),
+			newColumnNode({ "Field 4", false, "boolean" }),
+		}),
+	})
+	M.views_node = newFolderNode("views_node", "Views", {
+		newTableNode({ "View 1", "1" }, {
+			newColumnNode({ "Field 1", true, "uuid" }),
+			newColumnNode({ "Field 2", false, "int" }),
+			newColumnNode({ "Field 3", false, "varchar(255)" }),
+			newColumnNode({ "Field 4", false, "boolean" }),
+		}),
+		newTableNode({ "View 2", "2" }, {
+			newColumnNode({ "Field 1", true, "uuid" }),
+			newColumnNode({ "Field 2", false, "int" }),
+			newColumnNode({ "Field 3", false, "varchar(255)" }),
+			newColumnNode({ "Field 4", false, "boolean" }),
+		}),
+	})
 	M.tree = NuiTree({
 		bufnr = M.split.bufnr,
 		nodes = {
 			newDatabase("Database", {
-				newFolderNode("Tables", {
-					newTableNode("Table 1", {
-						newColumnNode({ "Field 1", true, "uuid" }),
-						newColumnNode({ "Field 2", false, "int" }),
-						newColumnNode({ "Field 3", false, "varchar(255)" }),
-						newColumnNode({ "Field 4", false, "boolean" }),
-					}),
-					newTableNode("Table 2", {
-						newColumnNode({ "Field 1", true, "uuid" }),
-						newColumnNode({ "Field 2", false, "int" }),
-						newColumnNode({ "Field 3", false, "varchar(255)" }),
-						newColumnNode({ "Field 4", false, "boolean" }),
-					}),
-				}),
+				M.tables_node,
+				M.views_node,
 			}),
 		},
 		prepare_node = function(node)
 			local line = NuiLine()
 			line:append(string.rep("  ", node:get_depth() - 1))
-			line:append(node:has_children() and (node:is_expanded() and " " or " ") or "  ")
+			line:append(
+				node:has_children()
+						and (node:is_expanded() and config.icons.tree.chevron_open or config.icons.tree.chevron_closed)
+					or "  ",
+				config.highlight.tree.chevron
+			)
 			if node.icon then
 				line:append(node.icon, node.icon_hl or config.highlight.tree.default_icon)
 			end
@@ -152,21 +191,23 @@ function M.refresh()
 		vim.notify("DbCliAdapter: No selected adapter", vim.log.levels.WARN)
 		return
 	end
-	core.run(adapter.schemasQuery, {
+	vim.notify("DbCliAdapter: Attempting refresh sidebar...", vim.log.levels.INFO)
+	core.run(adapter.tablesQuery, {
 		callback = function(result)
 			if not result then
 				vim.notify("Could not refresh the sidebar", vim.log.levels.ERROR)
 				return
 			end
+			--- Create new table nodes from the query result
 			local table_nodes = {}
-			for _, row in ipairs(result.data.rows) do
-				table.insert(table_nodes, NuiTree.Node({ text = row[1] }))
-			end
-			M.tree:set_nodes({
-				NuiTree.Node({ text = "Tables" }, table_nodes),
-			})
+			vim.tbl_map(function(row)
+				table.insert(table_nodes, newTableNode(row))
+			end, result.data.rows)
+			-- Replace the tables node children with the new nodes
+			M.tree:set_nodes(table_nodes, M.tables_node:get_id())
+
 			M.tree:render()
-			vim.notify("DbCliAdapter: Refreshing sidebar...", vim.log.levels.INFO)
+			vim.notify("DbCliAdapter: Sidebar refreshed succesfully", vim.log.levels.INFO)
 		end,
 	})
 end

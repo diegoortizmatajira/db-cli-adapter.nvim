@@ -25,24 +25,27 @@ local C = {
 		},
 		highlight = {
 			tree = {
-			    default_icon = "@symbol",
+				chevron = "@constant",
+				default_icon = "@symbol",
 				connected_database = "@function",
 				folder = "@symbol",
 				database = "@operator",
 				schema = "@symbol",
-				table = "@symbol",
+				table = "@number",
 				column = "@symbol",
 				key = "@type",
 			},
 		},
 		icons = {
 			tree = {
+				chevron_open = " ",
+				chevron_closed = " ",
 				connected_database = "󰪩 ",
 				folder = " ",
 				database = " ",
 				schema = "󰉓 ",
 				table = " ",
-				column = " ",
+				column = "󰭸 ",
 				key = "󰌆 ",
 			},
 			source = {

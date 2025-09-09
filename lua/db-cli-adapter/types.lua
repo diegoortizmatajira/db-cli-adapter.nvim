@@ -9,6 +9,7 @@
 --- @field data DbCliAdapter.OutputData|nil The structured output data
 --- @field row_count number The number of rows returned/affected
 --- @field message string A message describing the result of the operation
+--- @field discarded_lines string[] Lines that were discarded during parsing (if any)
 
 --- @class DbCliAdapter.SidebarKeybindingsConfig
 --- @field toggle_expand string[] Keybindings to toggle expand/collapse a node
@@ -21,6 +22,8 @@
 --- @field keybindings DbCliAdapter.SidebarKeybindingsConfig Keybindings for sidebar actions
 
 --- @class DbCliAdapter.TreeIcons
+--- @field chevron_open string Icon for an expanded tree node
+--- @field chevron_closed string Icon for a collapsed tree node
 --- @field connected_database string Icon for a connected database
 --- @field folder string Icon for a folder
 --- @field database string Icon for a database
@@ -30,6 +33,7 @@
 --- @field key string Icon for a key
 
 --- @class DbCliAdapter.TreeHighlight
+--- @field chevron string Chevron icon highlight group
 --- @field default_icon string Default icon highlight group
 --- @field connected_database string Highlight group for a connected database
 --- @field folder string Highlight group for a folder

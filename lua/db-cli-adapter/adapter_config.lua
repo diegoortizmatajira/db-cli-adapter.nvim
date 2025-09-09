@@ -4,6 +4,7 @@
 --- @field schemasQuery? string The query to list schemas in the database
 --- @field tablesQuery? string The query to list tables in the database
 --- @field viewsQuery? string The query to list views in the database
+--- @field line_preprocessor? fun(line: string): string A function to preprocess each line of output before parsing
 AdapterConfig = {
 	name = "",
 	command = "",
@@ -47,6 +48,7 @@ end
 --- Parses the output from the executed command and converts it into a structured format.
 --- This method provides a default implementation that returns the output as-is,
 --- with a minimal structure containing row count and a success message.
+--- This default implementation assumes the output is in a table-like format with pipes ("|")
 ---
 --- Specific adapters can override this method to implement custom parsing logic
 --- based on the output format of their respective database CLI.
@@ -54,51 +56,77 @@ end
 --- @param output string[] The raw output lines from the executed command
 --- @return DbCliAdapter.Output A structured representation of the parsed output
 function AdapterConfig:parse_output(output)
-	--- Default implementation: return the output as-is
-	vim.notify("Command executed: " .. table.concat(output, "\n"), vim.log.levels.DEBUG)
-	local rows = {}
-	for _, line in ipairs(output) do
-		table.insert(rows, { line })
+	local function get_values(line)
+		if self.line_preprocessor then
+			line = self.line_preprocessor(line)
+		end
+		local values = vim.split(line, "|")
+		-- Remove the first and last empty strings caused by leading and trailing |
+		table.remove(values, 1)
+		table.remove(values, #values)
+		-- Trim whitespace from each value
+		for i, v in ipairs(values) do
+			values[i] = vim.trim(v)
+		end
+		return values
 	end
-	--- @type DbCliAdapter.Output
+	local headers = nil
+	local rows = {}
+	local discarded_lines = {}
+	for _, line in ipairs(output) do
+		if string.match(line, "^|%-") or not string.match(line, "^|") then
+			if line ~= "" then
+				table.insert(discarded_lines, line)
+			end
+			goto continue
+		end
+		if not headers then
+			headers = get_values(line)
+			goto continue
+		end
+		local values = get_values(line)
+		table.insert(rows, values)
+
+		::continue::
+	end
 	return {
 		data = {
-			column_names = { "Line" },
+			column_names = headers,
 			rows = rows,
 		},
-		row_count = output and #output or 0,
+		row_count = rows and #rows or 0,
 		message = "Command executed successfully",
+		discarded_lines = discarded_lines,
 	}
 end
 
 --- @param opts DbCliAdapter.ExecutionOptions Execution options including command, args, env, and UI display preference
-local function _run_with_plenary(opts)
-	vim.notify("Running with plenary " .. vim.inspect(opts), vim.log.levels.INFO)
-	local Job = require("plenary.job")
-	local job_instance = Job:new({
-		command = opts.cmd,
-		args = opts.args,
+function AdapterConfig:_run_with_system(opts)
+	local command = opts.cmd .. " " .. table.concat(opts.args or {}, " ")
+	-- Clear empty env to avoid issues with vim.fn.jobstart
+	if opts and opts.env and #opts.env == 0 then
+		opts.env = nil
+	end
+	local output_lines = {}
+	vim.fn.jobstart(command, {
 		env = opts.env,
-		on_exit = function(j, return_val)
-			vim.schedule(function()
-				if return_val ~= 0 then
-					vim.notify("Command execution has failed", vim.log.levels.ERROR)
-					return
-				end
-				local lines = j:result()
-				vim.notify("Raw output: " .. table.concat(lines, "\n"), vim.log.levels.INFO)
-				local result = AdapterConfig:parse_output(lines)
-				opts.callback(result)
-			end) -- Ensure we are in the main thread
+		on_stdout = function(_, data, _)
+			if data then
+				vim.list_extend(output_lines, data)
+			end
+		end,
+		on_exit = function()
+			local result = self:parse_output(output_lines)
+			vim.notify("Parsed output " .. vim.inspect(result), vim.log.levels.INFO)
+			opts.callback(result)
 		end,
 	})
-	job_instance:start()
 end
 
 --- Executes the database CLI command with the provided arguments
 --- and displays output using overseer.nvim.
 --- @param opts DbCliAdapter.ExecutionOptions Execution options including command, args, env, and UI display preference
-local function _run_with_overseer(opts)
+function AdapterConfig:_run_with_overseer(opts)
 	-- Use overseer.nvim to run the command and show output in a terminal window
 	local overseer = require("overseer")
 	overseer
@@ -126,8 +154,8 @@ end
 --- @param opts DbCliAdapter.ExecutionOptions Execution options including command, args, env, and UI display preference
 function AdapterConfig:run_command(opts)
 	if opts and opts.callback then
-		_run_with_plenary(opts)
+		self:_run_with_system(opts)
 		return
 	end
-	_run_with_overseer(opts)
+	self:_run_with_overseer(opts)
 end
