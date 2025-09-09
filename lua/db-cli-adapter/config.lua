@@ -23,7 +23,28 @@ local C = {
 			global = vim.fn.stdpath("data") .. "/db-cli-adapter/global-connections.json",
 			workspace = get_workspace_source,
 		},
+		highlight = {
+			tree = {
+			    default_icon = "@symbol",
+				connected_database = "@function",
+				folder = "@symbol",
+				database = "@operator",
+				schema = "@symbol",
+				table = "@symbol",
+				column = "@symbol",
+				key = "@type",
+			},
+		},
 		icons = {
+			tree = {
+				connected_database = "󰪩 ",
+				folder = " ",
+				database = " ",
+				schema = "󰉓 ",
+				table = " ",
+				column = " ",
+				key = "󰌆 ",
+			},
 			source = {
 				global = "🌐",
 				workspace = " ",

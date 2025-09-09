@@ -74,11 +74,7 @@ end
 --- it will notify the user with an error message.
 ---
 --- @param query string The query to be executed.
---- @param opts table|nil Optional execution parameters:
----   - connection (string|nil): The name of the connection to use. If not provided,
----     the buffer-local connection (`vim.b.db_cli_adapter_connection`) will be used.
---- If the connection is not found or the adapter for the connection is not configured,
---- it will notify the user with an error message.
+--- @param opts? DbCliAdapter.RunOptions Optional table of execution parameters:
 local function _run(query, opts)
 	opts = opts or {}
 	if opts and not opts.connection then
@@ -100,9 +96,7 @@ local function _run(query, opts)
 		vim.notify("Adapter not found: " .. tostring(connection.adapter), vim.log.levels.ERROR)
 		return
 	end
-	local result = adapter:query(query, connection)
-	local output_module = require("db-cli-adapter.output")
-	output_module.display_output(result)
+	adapter:query(query, connection, opts.callback)
 end
 
 --- Executes a database query.
@@ -117,10 +111,7 @@ end
 --- will proceed automatically.
 ---
 --- @param query string The database query to execute.
---- @param opts table|nil Optional table of execution parameters:
----   - connection (string|nil): The name of the connection to use for query execution.
----     If not provided, the buffer-local connection will be used, or the user will
----     be prompted to select one.
+--- @param opts? DbCliAdapter.RunOptions Optional table of execution parameters:
 function M.run(query, opts)
 	opts = opts or {}
 	if not opts.connection and not vim.b.db_cli_adapter_connection then
@@ -129,7 +120,7 @@ function M.run(query, opts)
 		end)
 		return
 	end
-	_run(query, opts)
+	return _run(query, opts)
 end
 
 --- Opens the source file for editing connections associated with the given key.

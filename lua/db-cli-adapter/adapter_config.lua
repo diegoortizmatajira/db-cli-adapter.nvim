@@ -39,15 +39,9 @@ end
 --- Sends a query to the database, should be overridden by specific adapters
 --- @param command string The SQL command to execute
 --- @param params DbCliAdapter.base_params Connection parameters
---- @param internal_execution boolean|nil If true, the command is being executed internally and should not open a UI
---- @return DbCliAdapter.Output A structured representation of the query result
-function AdapterConfig:query(command, params, internal_execution)
+--- @param callback fun(result: DbCliAdapter.Output) A callback function to handle the query result
+function AdapterConfig:query(command, params, callback)
 	vim.notify("Query method not implemented for adapter: " .. self.name, vim.log.levels.WARN)
-	return {
-		data = nil,
-		row_count = 0,
-		message = "Query method not implemented",
-	}
 end
 
 --- Parses the output from the executed command and converts it into a structured format.
@@ -62,33 +56,49 @@ end
 function AdapterConfig:parse_output(output)
 	--- Default implementation: return the output as-is
 	vim.notify("Command executed: " .. table.concat(output, "\n"), vim.log.levels.DEBUG)
+	local rows = {}
+	for _, line in ipairs(output) do
+		table.insert(rows, { line })
+	end
 	--- @type DbCliAdapter.Output
 	return {
 		data = {
-			column_names = { "SampleA", "SampleB", "SampleC" },
-			rows = {
-				{ "ValueA1", "ValueB1", "ValueC1" },
-				{ "ValueA2", "ValueB2", "ValueC2" },
-				{ "ValueA3", "ValueB3", "ValueC3" },
-			},
+			column_names = { "Line" },
+			rows = rows,
 		},
-		row_count = 3,
+		row_count = output and #output or 0,
 		message = "Command executed successfully",
 	}
 end
 
---- Executes the database CLI command with the provided arguments
---- and captures its output.
 --- @param opts DbCliAdapter.ExecutionOptions Execution options including command, args, env, and UI display preference
---- @return DbCliAdapter.Output A structured representation of the parsed output
-function AdapterConfig:run_command(opts)
-	if opts and opts.internal_execution then
-		return {
-			data = nil,
-			row_count = 0,
-			message = "Failed to execute command",
-		}
-	end
+local function _run_with_plenary(opts)
+	vim.notify("Running with plenary " .. vim.inspect(opts), vim.log.levels.INFO)
+	local Job = require("plenary.job")
+	local job_instance = Job:new({
+		command = opts.cmd,
+		args = opts.args,
+		env = opts.env,
+		on_exit = function(j, return_val)
+			vim.schedule(function()
+				if return_val ~= 0 then
+					vim.notify("Command execution has failed", vim.log.levels.ERROR)
+					return
+				end
+				local lines = j:result()
+				vim.notify("Raw output: " .. table.concat(lines, "\n"), vim.log.levels.INFO)
+				local result = AdapterConfig:parse_output(lines)
+				opts.callback(result)
+			end) -- Ensure we are in the main thread
+		end,
+	})
+	job_instance:start()
+end
+
+--- Executes the database CLI command with the provided arguments
+--- and displays output using overseer.nvim.
+--- @param opts DbCliAdapter.ExecutionOptions Execution options including command, args, env, and UI display preference
+local function _run_with_overseer(opts)
 	-- Use overseer.nvim to run the command and show output in a terminal window
 	local overseer = require("overseer")
 	overseer
@@ -109,10 +119,15 @@ function AdapterConfig:run_command(opts)
 			},
 		})
 		:start()
+end
 
-	return {
-		data = nil,
-		row_count = 0,
-		message = "Command sent to UI",
-	}
+--- Executes the database CLI command with the provided arguments
+--- and captures its output.
+--- @param opts DbCliAdapter.ExecutionOptions Execution options including command, args, env, and UI display preference
+function AdapterConfig:run_command(opts)
+	if opts and opts.callback then
+		_run_with_plenary(opts)
+		return
+	end
+	_run_with_overseer(opts)
 end

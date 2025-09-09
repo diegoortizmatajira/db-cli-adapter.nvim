@@ -20,18 +20,47 @@
 --- @class DbCliAdapter.SidebarConfig
 --- @field keybindings DbCliAdapter.SidebarKeybindingsConfig Keybindings for sidebar actions
 
+--- @class DbCliAdapter.TreeIcons
+--- @field connected_database string Icon for a connected database
+--- @field folder string Icon for a folder
+--- @field database string Icon for a database
+--- @field schema string Icon for a schema
+--- @field table string Icon for a table
+--- @field column string Icon for a column
+--- @field key string Icon for a key
+
+--- @class DbCliAdapter.TreeHighlight
+--- @field default_icon string Default icon highlight group
+--- @field connected_database string Highlight group for a connected database
+--- @field folder string Highlight group for a folder
+--- @field database string Highlight group for a database
+--- @field schema string Highlight group for a schema
+--- @field table string Highlight group for a table
+--- @field column string Highlight group for a column
+--- @field key string Highlight group for a key
+
 --- @class  DbCliAdapter.IconConfig defines the configuration structure for DbCliAdapter
 --- @field source table<string, string> Icons for different connection sources
 --- @field adapter table<string, string> Icons for different connection sources
+--- @field tree DbCliAdapter.TreeIcons Icons for different tree elements
+
+--- @class  DbCliAdapter.HighlighConfig defines the configuration structure for DbCliAdapter
+--- @field tree DbCliAdapter.TreeHighlight Highlight groups for different tree elements
 
 --- @class  DbCliAdapter.Config defines the configuration structure for DbCliAdapter
 --- @field adapters table<string, DbCliAdapter.AdapterConfig> List of adapter configurations
 --- @field sources table<string, string|fun():string> A mapping of source names to their configurations
 --- @field sidebar DbCliAdapter.SidebarConfig Configuration for the sidebar
 --- @field icons DbCliAdapter.IconConfig Configuration for icons used in the UI
+--- @field highlight DbCliAdapter.HighlighConfig Configuration for highlight groups used in the UI
 
---- @class DbCliAdapter.ExecutionOptions
+--- @class DbCliAdapter.ExecutionOptions defines parameters for executing a command
 --- @field cmd string The command to execute
 --- @field args string[] A list of arguments to pass to the command
 --- @field env? table<string, string> Optional environment variables to set for the command
---- @field internal_execution? boolean Whether to show the command output in the UI
+--- @field callback? fun(output: DbCliAdapter.Output) Optional callback function to handle the output
+
+--- @class DbCliAdapter.RunOptions defines parameters for running a query
+--- @field connection? string The name of the connection to use. If not provided, the buffer-local connection will be used.
+--- @field timeout? number Timeout in seconds for the query execution
+--- @field callback? fun(output: DbCliAdapter.Output) Optional callback function to handle the

@@ -4,12 +4,46 @@ local config = require("db-cli-adapter.config").current
 local Split = require("nui.split")
 local NuiTree = require("nui.tree")
 local NuiLine = require("nui.line")
-local event = require("nui.utils.autocmd").event
 
 local M = {
 	split = nil,
 	tree = nil,
 }
+
+local newDatabase = function(text, children)
+	return NuiTree.Node({
+		icon = config and config.icons.tree.database,
+		icon_hl = config and config.highlight.tree.database,
+		text = text,
+	}, children)
+end
+local newFolderNode = function(text, children)
+	return NuiTree.Node({
+		icon = config and config.icons.tree.folder,
+		icon_hl = config and config.highlight.tree.folder,
+		text = text,
+	}, children)
+end
+
+local newTableNode = function(text, children)
+	return NuiTree.Node({
+		icon = config and config.icons.tree.table,
+		icon_hl = config and config.highlight.tree.table,
+		text = text,
+	}, children)
+end
+
+local newColumnNode = function(col_definition, children)
+	local icon = config and ((col_definition[2] and config.icons.tree.key) or config.icons.tree.column)
+	local icon_hl = config and ((col_definition[2] and config.highlight.tree.key) or config.highlight.tree.column)
+	local node = NuiTree.Node({
+		icon = icon,
+		icon_hl = icon_hl,
+		text = col_definition[1],
+		description = col_definition[3],
+	}, children)
+	return node
+end
 
 function M.init()
 	if not config then
@@ -25,10 +59,20 @@ function M.init()
 	M.tree = NuiTree({
 		bufnr = M.split.bufnr,
 		nodes = {
-			NuiTree.Node({ text = "Root" }, {
-				NuiTree.Node({ text = "Child 1" }),
-				NuiTree.Node({ text = "Child 2" }, {
-					NuiTree.Node({ text = "Grandchild 1" }),
+			newDatabase("Database", {
+				newFolderNode("Tables", {
+					newTableNode("Table 1", {
+						newColumnNode({ "Field 1", true, "uuid" }),
+						newColumnNode({ "Field 2", false, "int" }),
+						newColumnNode({ "Field 3", false, "varchar(255)" }),
+						newColumnNode({ "Field 4", false, "boolean" }),
+					}),
+					newTableNode("Table 2", {
+						newColumnNode({ "Field 1", true, "uuid" }),
+						newColumnNode({ "Field 2", false, "int" }),
+						newColumnNode({ "Field 3", false, "varchar(255)" }),
+						newColumnNode({ "Field 4", false, "boolean" }),
+					}),
 				}),
 			}),
 		},
@@ -36,7 +80,13 @@ function M.init()
 			local line = NuiLine()
 			line:append(string.rep("  ", node:get_depth() - 1))
 			line:append(node:has_children() and (node:is_expanded() and " " or " ") or "  ")
+			if node.icon then
+				line:append(node.icon, node.icon_hl or config.highlight.tree.default_icon)
+			end
 			line:append(node.text)
+			if node.description then
+				line:append(" " .. node.description, "@comment")
+			end
 			return line
 		end,
 		buf_options = {
@@ -97,7 +147,28 @@ function M.init()
 end
 
 function M.refresh()
-	vim.notify("DbCliAdapter: Refreshing sidebar...", vim.log.levels.INFO)
+	local adapter = core.get_buffer_db_adapter()
+	if not adapter then
+		vim.notify("DbCliAdapter: No selected adapter", vim.log.levels.WARN)
+		return
+	end
+	core.run(adapter.schemasQuery, {
+		callback = function(result)
+			if not result then
+				vim.notify("Could not refresh the sidebar", vim.log.levels.ERROR)
+				return
+			end
+			local table_nodes = {}
+			for _, row in ipairs(result.data.rows) do
+				table.insert(table_nodes, NuiTree.Node({ text = row[1] }))
+			end
+			M.tree:set_nodes({
+				NuiTree.Node({ text = "Tables" }, table_nodes),
+			})
+			M.tree:render()
+			vim.notify("DbCliAdapter: Refreshing sidebar...", vim.log.levels.INFO)
+		end,
+	})
 end
 
 function M.toggle()
