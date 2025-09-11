@@ -47,7 +47,6 @@ local newTableNode = function(table_row, children)
 		text = table_name,
 		table_name = table_name,
 		schema = schema,
-		description = schema and ("(" .. schema .. ")") or nil,
 	}, children)
 end
 
@@ -185,13 +184,9 @@ function M.init()
 	end, config.sidebar.keybindings.quit)
 end
 
-function M.refresh()
-	local adapter = core.get_buffer_db_adapter()
-	if not adapter then
-		vim.notify("DbCliAdapter: No selected adapter", vim.log.levels.WARN)
-		return
-	end
-	vim.notify("DbCliAdapter: Attempting refresh sidebar...", vim.log.levels.INFO)
+--- Refresh the tables in the sidebar by querying the database and grouping them by schema
+--- @param adapter DbCliAdapter.AdapterConfig The database adapter to use for querying tables
+local function _refresh_tables(adapter)
 	core.run(adapter.tablesQuery, {
 		callback = function(result)
 			if not result then
@@ -199,17 +194,34 @@ function M.refresh()
 				return
 			end
 			--- Create new table nodes from the query result
-			local table_nodes = {}
+			local table_nodes_per_schema = {}
 			vim.tbl_map(function(row)
-				table.insert(table_nodes, newTableNode(row))
+				local schema_name = row[2]
+				local schema_tables = table_nodes_per_schema[schema_name] or {}
+				table.insert(schema_tables, newTableNode(row))
+				table_nodes_per_schema[schema_name] = schema_tables
 			end, result.data.rows)
+			local schema_nodes = {}
+
+			for schema, tables in pairs(table_nodes_per_schema) do
+				table.insert(schema_nodes, newFolderNode("schema_" .. schema, schema, tables))
+			end
 			-- Replace the tables node children with the new nodes
-			M.tree:set_nodes(table_nodes, M.tables_node:get_id())
+			M.tree:set_nodes(schema_nodes, M.tables_node:get_id())
 
 			M.tree:render()
 			vim.notify("DbCliAdapter: Sidebar refreshed succesfully", vim.log.levels.INFO)
 		end,
 	})
+end
+
+function M.refresh()
+	local adapter = core.get_buffer_db_adapter()
+	if not adapter then
+		vim.notify("DbCliAdapter: No selected adapter", vim.log.levels.WARN)
+		return
+	end
+	_refresh_tables(adapter)
 end
 
 function M.toggle()

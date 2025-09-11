@@ -15,12 +15,17 @@ AdapterConfig = {
 --- @return DbCliAdapter.AdapterConfig A new instance of AdapterConfig
 function AdapterConfig:new(config)
 	local data = vim.tbl_deep_extend("force", {
-		schemasQuery = [[SELECT schema_name FROM information_schema.schemata;]],
+		schemasQuery = [[SELECT schema_name 
+		    FROM information_schema.schemata
+		    ORDER BY schema_name;]],
 		tablesQuery = [[SELECT table_name, table_schema
-		FROM information_schema.tables
-		WHERE table_type='BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema') 
-		ORDER by table_name;]],
-		viewsQuery = [[SELECT table_name, table_schema FROM information_schema.views WHERE table_schema NOT IN ('pg_catalog', 'information_schema') ORDER by table_name;]],
+		    FROM information_schema.tables
+		    WHERE table_type='BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema') 
+		    ORDER by table_name;]],
+		viewsQuery = [[SELECT table_name, table_schema 
+		    FROM information_schema.views 
+		    WHERE table_schema NOT IN ('pg_catalog', 'information_schema') 
+		    ORDER by table_name;]],
 	}, config)
 	local o = setmetatable(data, self)
 	self.__index = self
