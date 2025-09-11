@@ -1,5 +1,8 @@
 local config = require("db-cli-adapter.config")
-local M = {}
+local M = {
+	--- @type DbCliAdapter.base_params[]|nil
+	_cached_connections = nil,
+}
 
 --- Retrieves a list of available database connections.
 ---
@@ -15,13 +18,14 @@ local M = {}
 --- If the source file or path is invalid or unreadable, it will be skipped.
 ---
 --- @param cache_only boolean|nil If true, only return cached connections instead of re-fetching.
---- @return table A table of available connections, where the keys are connection names
+--- @return table<string,DbCliAdapter.base_params> connections A table of available connections, where the keys are connection names
 ---   (formatted as "name (from source_key)") and the values are the connection details.
 function M.get_available_connections(cache_only)
 	if cache_only and M._cached_connections then
 		return M._cached_connections
 	end
 
+	--- @type table<string,DbCliAdapter.base_params>
 	local connections = {}
 	for key, source_path in pairs(config.current.sources) do
 		if type(source_path) == "function" then

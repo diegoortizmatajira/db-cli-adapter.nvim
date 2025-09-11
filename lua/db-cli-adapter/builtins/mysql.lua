@@ -1,7 +1,7 @@
 require("db-cli-adapter.types")
 require("db-cli-adapter.adapter_config")
 
---- @class DbCliAdapter.mysql_params
+--- @class DbCliAdapter.mysql_params: DbCliAdapter.base_params
 --- @field dbname string The name of the database to connect to
 --- @field username string The username to connect as
 --- @field host string The hostname of the database server
@@ -14,6 +14,15 @@ require("db-cli-adapter.adapter_config")
 local adapter = AdapterConfig:new({
 	name = "Mysql (mysql)",
 	command = "mysql",
+	--- Use pipe characters to format output as a table when a line contains a pipe (to complete the table)
+	line_preprocessor = function(line)
+		if line:match("\t") then
+			-- Convert tabs to pipes for table formatting
+			line = line:gsub("\t", "|")
+			return "|" .. line .. "|"
+		end
+		return line
+	end,
 })
 
 --- Execute a SQL command using pgcli
@@ -33,6 +42,9 @@ function adapter:query(command, params, callback)
 	if params and params.host then
 		table.insert(args, string.format("--host=%s", params.host))
 	end
+	if params and params.timeout then
+		table.insert(args, string.format("--connect-timeout=%s", params.timeout))
+	end
 	if params and params.port then
 		table.insert(args, string.format("--port=%s", params.port))
 	end
@@ -45,7 +57,7 @@ function adapter:query(command, params, callback)
 	if params and params.skipssl then
 		table.insert(args, "--skip-ssl")
 	end
-	table.insert(args, string.format("--execute=%s", command))
+	table.insert(args, string.format([[--execute=%s]], command))
 
 	return self:run_command({
 		cmd = self.command,

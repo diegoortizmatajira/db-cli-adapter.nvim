@@ -1,7 +1,7 @@
 require("db-cli-adapter.types")
 require("db-cli-adapter.adapter_config")
 
---- @class DbCliAdapter.pgsql_params
+--- @class DbCliAdapter.pgsql_params: DbCliAdapter.base_params
 --- @field dbname string The name of the database to connect to
 --- @field username string The username to connect as
 --- @field host string The hostname of the database server
@@ -37,6 +37,9 @@ function adapter:query(command, params, callback)
 	if params and params.password then
 		env["PGPASSWORD"] = params.password
 	end
+	if params and params.timeout then
+		env["PGCONNECT_TIMEOUT"] = params.timeout
+	end
 	if params and params.host then
 		table.insert(args, string.format("--host=%s", params.host))
 	end
@@ -50,7 +53,7 @@ function adapter:query(command, params, callback)
 	table.insert(args, "-P")
 	table.insert(args, "pager=off")
 	--- Pass the command to execute
-	table.insert(args, string.format("--command=%s", command))
+	table.insert(args, string.format([[--command=%s]], command))
 
 	return self:run_command({
 		cmd = self.command,

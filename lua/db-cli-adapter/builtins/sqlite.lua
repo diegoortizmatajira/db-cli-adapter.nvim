@@ -1,7 +1,7 @@
 require("db-cli-adapter.types")
 require("db-cli-adapter.adapter_config")
 
---- @class DbCliAdapter.sqlite_params
+--- @class DbCliAdapter.sqlite_params: DbCliAdapter.base_params
 --- @field filename string The name of the database to connect to
 
 --- @class DbCliAdapter.sqlite_adapter: DbCliAdapter.AdapterConfig
@@ -32,9 +32,13 @@ local adapter = AdapterConfig:new({
 function adapter:query(command, params, callback)
 	local args = {
 		"-markdown",
-		params.filename,
-		string.format([["%s"]], command),
 	}
+	if params and params.timeout then
+		table.insert(args, "-cmd")
+		table.insert(args, string.format([[".timeout %s"]], params.timeout * 1000)) -- timeout in milliseconds
+	end
+	table.insert(args, params.filename)
+	table.insert(args, string.format([["%s"]], command))
 	local env = {}
 
 	return self:run_command({

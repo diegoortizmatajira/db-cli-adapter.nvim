@@ -17,14 +17,10 @@ function AdapterConfig:new(config)
 	local data = vim.tbl_deep_extend("force", {
 		schemasQuery = [[SELECT schema_name FROM information_schema.schemata;]],
 		tablesQuery = [[SELECT table_name, table_schema
-		FROM information_schema.tables 
-		WHERE table_type='BASE TABLE' 
-		AND table_schema NOT IN ('pg_catalog', 'information_schema')
+		FROM information_schema.tables
+		WHERE table_type='BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema') 
 		ORDER by table_name;]],
-		viewsQuery = [[SELECT table_name, table_schema
-        FROM information_schema.views 
-        WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
-        ORDER by table_name;]],
+		viewsQuery = [[SELECT table_name, table_schema FROM information_schema.views WHERE table_schema NOT IN ('pg_catalog', 'information_schema') ORDER by table_name;]],
 	}, config)
 	local o = setmetatable(data, self)
 	self.__index = self
@@ -57,9 +53,6 @@ end
 --- @return DbCliAdapter.Output A structured representation of the parsed output
 function AdapterConfig:parse_output(output)
 	local function get_values(line)
-		if self.line_preprocessor then
-			line = self.line_preprocessor(line)
-		end
 		local values = vim.split(line, "|")
 		-- Remove the first and last empty strings caused by leading and trailing |
 		table.remove(values, 1)
@@ -74,6 +67,9 @@ function AdapterConfig:parse_output(output)
 	local rows = {}
 	local discarded_lines = {}
 	for _, line in ipairs(output) do
+		if self.line_preprocessor then
+			line = self.line_preprocessor(line)
+		end
 		if string.match(line, "^|%-") or not string.match(line, "^|") then
 			if line ~= "" then
 				table.insert(discarded_lines, line)
@@ -102,7 +98,10 @@ end
 
 --- @param opts DbCliAdapter.ExecutionOptions Execution options including command, args, env, and UI display preference
 function AdapterConfig:_run_with_system(opts)
-	local command = opts.cmd .. " " .. table.concat(opts.args or {}, " ")
+	local shell = require("overseer.shell")
+
+	local full_cmd = vim.list_extend({ opts.cmd }, opts.args or {})
+	local command = shell.escape_cmd(full_cmd)
 	-- Clear empty env to avoid issues with vim.fn.jobstart
 	if opts and opts.env and #opts.env == 0 then
 		opts.env = nil
