@@ -103,11 +103,13 @@ function AdapterConfig:_run_with_system(opts)
 	local full_cmd = vim.list_extend({ opts.cmd }, opts.args or {})
 	local command = shell.escape_cmd(full_cmd)
 	-- Clear empty env to avoid issues with vim.fn.jobstart
-	if opts and opts.env and #opts.env == 0 then
+	if opts and opts.env and next(opts.env) == nil then
 		opts.env = nil
 	end
+	vim.notify("environment: " .. vim.inspect(opts.env))
 	local output_lines = {}
 	vim.fn.jobstart(command, {
+		stdout_buffered = true,
 		env = opts.env,
 		on_stdout = function(_, data, _)
 			if data then
