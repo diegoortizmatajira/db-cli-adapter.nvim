@@ -139,6 +139,12 @@ function M.init()
 			M.split:hide()
 		end)
 	end, config.sidebar.keybindings.quit)
+	-- Hides gutter and number columns
+	vim.opt_local.number = false
+	vim.opt_local.relativenumber = false
+	vim.opt_local.signcolumn = "no"
+	vim.opt_local.foldcolumn = "0"
+
 	-- Automatically refresh the sidebar when the database connection changes
 	core.set_connection_changed_callback(function()
 		M.refresh()
