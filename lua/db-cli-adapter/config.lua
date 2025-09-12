@@ -67,6 +67,7 @@ local C = {
 				collapse = { "c" },
 				quit = { "q" },
 				refresh = { "r" },
+				refresh_all = { "R" },
 			},
 		},
 	},

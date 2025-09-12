@@ -17,6 +17,7 @@
 --- @field collapse string[] Keybindings to collapse a node
 --- @field quit string[] Keybindings to quit the sidebar
 --- @field refresh string[] Keybindings to refresh the sidebar
+--- @field refresh_all string[] Keybindings to refresh the sidebar
 
 --- @class DbCliAdapter.SidebarConfig
 --- @field keybindings DbCliAdapter.SidebarKeybindingsConfig Keybindings for sidebar actions
