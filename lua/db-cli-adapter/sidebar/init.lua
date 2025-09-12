@@ -15,14 +15,16 @@ local M = {
 --- This function ensures that a database adapter is available and connected before attempting the refresh.
 --- If no adapter is selected, it prompts the user to select one.
 --- @param callback fun(tree: NuiTree, adapter: DbCliAdapter.AdapterConfig) The function to execute once the adapter is retrieved and ready.
-local function _try_refresh_with_adapter(callback)
+local function _try_refresh_with_adapter(callback, silent)
 	if not callback then
 		return
 	end
 	local wrapper = function()
 		local adapter = core.get_buffer_db_adapter()
 		if not adapter then
-			vim.notify("DbCliAdapter: No selected adapter", vim.log.levels.WARN)
+			if not silent then
+				vim.notify("DbCliAdapter: No selected adapter", vim.log.levels.WARN)
+			end
 			return
 		end
 		callback(M.tree, adapter)
@@ -137,8 +139,15 @@ function M.init()
 			M.split:hide()
 		end)
 	end, config.sidebar.keybindings.quit)
+	-- Automatically refresh the sidebar when the database connection changes
+	core.set_connection_changed_callback(function()
+		M.refresh()
+	end)
+	-- Select a connection if none is selected, then refresh the sidebar
+	_try_refresh_with_adapter(function()
+		--- Intentionally empty
+	end, true)
 end
-
 
 function M.refresh()
 	_try_refresh_with_adapter(nodes.database_node.refresh)
@@ -153,7 +162,6 @@ function M.toggle()
 		end
 	else
 		M.init()
-		M.refresh()
 	end
 end
 return M

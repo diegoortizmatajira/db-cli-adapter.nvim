@@ -49,6 +49,28 @@ function M.get_available_connections(cache_only)
 	return connections
 end
 
+--- Sets a callback function to be executed when the database connection changes.
+--- This function assigns the provided callback to a buffer-local variable
+--- `vim.b.db_cli_adapter_connection_changed`, which can be triggered later when the connection changes.
+--- @param callback fun(connection: string) A function to be called when the connection changes. The function should accept one argument
+function M.set_connection_changed_callback(callback)
+	vim.b.db_cli_adapter_connection_changed = callback
+end
+
+--- Triggers the callback function for when the database connection changes.
+---
+--- This function checks if a buffer-local callback function (`vim.b.db_cli_adapter_connection_changed`)
+--- has been set. If such a callback exists and is a valid function, it will be invoked,
+--- passing the current buffer-local connection (`vim.b.db_cli_adapter_connection`) as an argument.
+---
+--- The callback is expected to handle any logic related to connection changes, such as updating
+--- UI components, refreshing data, or re-establishing the connection.
+function M.trigger_connection_changed()
+	if vim.b.db_cli_adapter_connection_changed and type(vim.b.db_cli_adapter_connection_changed) == "function" then
+		vim.b.db_cli_adapter_connection_changed(vim.b.db_cli_adapter_connection)
+	end
+end
+
 --- Prompts the user to select a database connection from the available connections.
 --- The selected connection will be stored in the buffer-local variable `vim.b.db_cli_adapter_connection`.
 --- If a callback is provided, it will be executed after the connection is selected.
@@ -63,6 +85,7 @@ function M.select_connection(callback)
 	vim.ui.select(connection_names, { prompt = "Select a connection:" }, function(choice)
 		if choice then
 			vim.b.db_cli_adapter_connection = choice
+			M.trigger_connection_changed()
 			if callback then
 				-- Execute the callback after setting the connection
 				callback()
