@@ -20,7 +20,7 @@ function AdapterConfig:new(config)
 		    ORDER BY schema_name;]],
 		tablesQuery = [[SELECT table_name, table_schema
 		    FROM information_schema.tables
-		    WHERE table_type='BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema') 
+		    WHERE table_type='BASE TABLE' AND table_schema = '%s'
 		    ORDER by table_name;]],
 		viewsQuery = [[SELECT table_name, table_schema 
 		    FROM information_schema.views 

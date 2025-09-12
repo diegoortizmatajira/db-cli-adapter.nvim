@@ -14,6 +14,8 @@ local M = {
 --- @field icon_hl? string The highlight group for the icon
 --- @field text string The display text for the node
 --- @field description? string Additional description text for the node
+--- @field count? number The number of child nodes (e.g., number of tables in a schema)
+--- @field expandable? boolean Whether the node can be expanded to show children
 --- @field refresh? fun(tree: NuiTree, adapter: DbCliAdapter.AdapterConfig): nil A function to refresh the node's contents
 
 function M.get_schema_id(schema_name)
@@ -54,6 +56,7 @@ function M.newFolderNode(id, text, children, refresh)
 		icon_hl = config and config.highlight.tree.folder,
 		text = text,
 		refresh = refresh,
+		expandable = true,
 	}, children)
 end
 
@@ -73,6 +76,7 @@ function M.newTableNode(table_row, children)
 		refresh = function()
 			vim.notify("Refreshing table: " .. table_name, vim.log.levels.INFO)
 		end,
+		expandable = true,
 	}, children)
 end
 
@@ -113,7 +117,29 @@ function M.newSchemaNode(schema_name)
 		tables_node = tables_node,
 		views_node = views_node,
 		refresh = function(tree, adapter)
-			vim.notify(string.format("'%s' schema branch refreshed succesfully", schema_name), vim.log.levels.INFO)
+			core.run(string.format(adapter.tablesQuery, schema_name), {
+				callback = function(result)
+					if not result then
+						vim.notify("Could not refresh the sidebar", vim.log.levels.ERROR)
+						return
+					end
+					local schema_node = M.schema_map[schema_name]
+					if not schema_node then
+						vim.notify("Schema node not found for schema: " .. schema_name, vim.log.levels.WARN)
+					end
+					local table_nodes = {}
+					vim.tbl_map(function(row)
+						table.insert(table_nodes, M.newTableNode(row))
+					end, result.data.rows)
+					tree:set_nodes(table_nodes, schema_node.tables_node:get_id())
+					schema_node.tables_node.count = #table_nodes
+					tree:render()
+					vim.notify(
+						string.format("'%s' schema branch refreshed succesfully", schema_name),
+						vim.log.levels.INFO
+					)
+				end,
+			})
 		end,
 	}, { tables_node, views_node })
 end
@@ -145,7 +171,7 @@ function M.newDatabaseNode(text)
 					-- Replace the tables node children with the new nodes
 					tree:set_nodes(schema_nodes, M.database_node:get_id())
 					tree:render()
-					M._refresh_tables(tree, adapter)
+					-- M._refresh_tables(tree, adapter)
 					vim.notify("Entire database tree refreshed succesfully", vim.log.levels.INFO)
 				end,
 			})

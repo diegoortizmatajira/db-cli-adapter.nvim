@@ -37,6 +37,35 @@ local function _try_refresh_with_adapter(callback, silent)
 	wrapper()
 end
 
+local function try_refresh(node, silent)
+	while node do
+		if node.refresh then
+			_try_refresh_with_adapter(node.refresh, silent)
+			return
+		end
+		node = M.tree:get_node(node:get_parent_id())
+	end
+end
+
+--- Attempt to expand a tree node if it is expandable and not already expanded.
+--- If the node has a refresh function and is marked as expandable but has no children loaded,
+--- it will call the refresh function to load its children before expanding.
+--- @param node DbCliAdapter.SidebarNodeData|NuiTree.Node The tree node to attempt to expand.
+--- @return boolean True if the node was expanded, false otherwise.
+local function try_expand_node(node)
+	if node and not node:is_expanded() then
+		if node:has_children() then
+			node:expand()
+			return true
+		elseif node.expandable and node.count == nil then
+			try_refresh(node, true)
+			node:expand()
+			return true
+		end
+	end
+	return false
+end
+
 function M.init()
 	if not config then
 		vim.notify("DbCliAdapter: Configuration not found.", vim.log.levels.ERROR)
@@ -58,13 +87,16 @@ function M.init()
 			line:append(
 				node:has_children()
 						and (node:is_expanded() and config.icons.tree.chevron_open or config.icons.tree.chevron_closed)
-					or "  ",
+					or (node.expandable and config.icons.tree.chevron_closed or "  "),
 				config.highlight.tree.chevron
 			)
 			if node.icon then
 				line:append(node.icon, node.icon_hl or config.highlight.tree.default_icon)
 			end
 			line:append(node.text)
+			if node.count then
+				line:append(" (" .. node.count .. ")", "@comment")
+			end
 			if node.description then
 				line:append(" " .. node.description, "@comment")
 			end
@@ -83,11 +115,11 @@ function M.init()
 	vim.tbl_map(function(key)
 		M.split:map("n", key, function()
 			local node = M.tree:get_node()
-			if node and node:has_children() then
+			if node then
 				if node:is_expanded() then
 					node:collapse()
 				else
-					node:expand()
+					try_expand_node(node)
 				end
 				M.tree:render()
 			end
@@ -97,8 +129,7 @@ function M.init()
 	vim.tbl_map(function(key)
 		M.split:map("n", key, function()
 			local node = M.tree:get_node()
-			if node and node:has_children() then
-				node:expand()
+			if try_expand_node(node) then
 				M.tree:render()
 			end
 		end)
@@ -118,13 +149,7 @@ function M.init()
 		M.split:map("n", key, function()
 			-- Find the nearest ancestor node with a refresh function
 			local node = M.tree:get_node()
-			while node do
-				if node.refresh then
-					_try_refresh_with_adapter(node.refresh)
-					return
-				end
-				node = M.tree:get_node(node:get_parent_id())
-			end
+			try_refresh(node)
 		end)
 	end, config.sidebar.keybindings.refresh)
 	-- Map keys for refreshing the sidebar
