@@ -8,16 +8,16 @@ require("db-cli-adapter.adapter_config")
 local adapter = AdapterConfig:new({
 	name = "Sqlite (sqlite3)",
 	command = "sqlite3",
-	schemasQuery = [[SELECT 'general' AS schema_name;]],
+	schemasQuery = [[SELECT 'public' AS schema_name;]],
 	tablesQuery = [[
-	       SELECT name AS table_name, 'general' AS table_schema
+	       SELECT name AS table_name, 'public' AS table_schema
 	       FROM sqlite_master 
 	       WHERE type='table' 
 	       AND name NOT LIKE 'sqlite_%'
 	       ORDER BY name;
 	   ]],
 	viewsQuery = [[
-        SELECT name AS table_name, 'general' AS table_schema
+        SELECT name AS table_name, 'public' AS table_schema
         FROM sqlite_master 
         WHERE type='view' 
         AND name NOT LIKE 'sqlite_%'

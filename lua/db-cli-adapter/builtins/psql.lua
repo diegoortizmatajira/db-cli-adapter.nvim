@@ -13,14 +13,6 @@ require("db-cli-adapter.adapter_config")
 local adapter = AdapterConfig:new({
 	name = "PostgreSQL (psql)",
 	command = "psql",
-
-	--- Use pipe characters to format output as a table when a line contains a pipe (to complete the table)
-	line_preprocessor = function(line)
-		if line:match("|") then
-			return "|" .. line .. "|"
-		end
-		return line
-	end,
 })
 
 --- Execute a SQL command using pgcli
@@ -52,6 +44,12 @@ function adapter:query(command, params, callback)
 	--- Disable pager to avoid issues with output capturing
 	table.insert(args, "-P")
 	table.insert(args, "pager=off")
+	table.insert(args, "-P")
+	table.insert(args, "format=aligned")
+	table.insert(args, "-P")
+	table.insert(args, "border=2")
+	table.insert(args, "-P")
+	table.insert(args, "linestyle=old-ascii")
 	--- Pass the command to execute
 	table.insert(args, string.format([[--command=%s]], command))
 

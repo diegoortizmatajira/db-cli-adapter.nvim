@@ -111,7 +111,6 @@ function AdapterConfig:_run_with_system(opts)
 	if opts and opts.env and next(opts.env) == nil then
 		opts.env = nil
 	end
-	vim.notify("environment: " .. vim.inspect(opts.env))
 	local output_lines = {}
 	vim.fn.jobstart(command, {
 		stdout_buffered = true,
@@ -123,7 +122,6 @@ function AdapterConfig:_run_with_system(opts)
 		end,
 		on_exit = function()
 			local result = self:parse_output(output_lines)
-			vim.notify("Parsed output " .. vim.inspect(result), vim.log.levels.INFO)
 			opts.callback(result)
 		end,
 	})
