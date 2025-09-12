@@ -32,6 +32,8 @@ local adapter = AdapterConfig:new({
 function adapter:query(command, params, callback)
 	local args = {
 		"-markdown",
+		"-cmd",
+		".mode table",
 	}
 	if params and params.timeout then
 		table.insert(args, "-cmd")
