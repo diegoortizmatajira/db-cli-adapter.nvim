@@ -37,10 +37,17 @@ local function _try_refresh_with_adapter(callback, silent)
 	wrapper()
 end
 
+--- Attempt to refresh the nearest ancestor node with a refresh function.
+--- If the provided node has a refresh function, it will be called.
+--- If not, the function will traverse up the tree to find the nearest ancestor with a refresh function and call it.
+--- @param node? DbCliAdapter.SidebarNodeData|NuiTree.Node The tree node to start the search from.
+--- @param silent? boolean Whether to suppress notifications if no adapter is found.
 local function try_refresh(node, silent)
 	while node do
 		if node.refresh then
-			_try_refresh_with_adapter(node.refresh, silent)
+			_try_refresh_with_adapter(function(tree, adapter)
+				node:refresh(tree, adapter)
+			end, silent)
 			return
 		end
 		node = M.tree:get_node(node:get_parent_id())
@@ -129,7 +136,7 @@ function M.init()
 	vim.tbl_map(function(key)
 		M.split:map("n", key, function()
 			local node = M.tree:get_node()
-			if try_expand_node(node) then
+			if node and try_expand_node(node) then
 				M.tree:render()
 			end
 		end)
@@ -149,6 +156,9 @@ function M.init()
 		M.split:map("n", key, function()
 			-- Find the nearest ancestor node with a refresh function
 			local node = M.tree:get_node()
+			if not node then
+				return
+			end
 			try_refresh(node)
 		end)
 	end, config.sidebar.keybindings.refresh)
@@ -181,7 +191,9 @@ function M.init()
 end
 
 function M.refresh()
-	_try_refresh_with_adapter(nodes.database_node.refresh)
+	_try_refresh_with_adapter(function(tree, adapter)
+		nodes.database_node:refresh(tree, adapter)
+	end)
 end
 
 function M.toggle()

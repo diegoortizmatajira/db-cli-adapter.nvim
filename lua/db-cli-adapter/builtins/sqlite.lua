@@ -13,14 +13,14 @@ local adapter = AdapterConfig:new({
 	       SELECT name AS table_name, 'public' AS table_schema
 	       FROM sqlite_master 
 	       WHERE type='table' 
-	       AND name NOT LIKE 'sqlite_%'
+	       AND name NOT LIKE 'sqlite_%%'
 	       ORDER BY name;
 	   ]],
 	viewsQuery = [[
         SELECT name AS table_name, 'public' AS table_schema
         FROM sqlite_master 
         WHERE type='view' 
-        AND name NOT LIKE 'sqlite_%'
+        AND name NOT LIKE 'sqlite_%%'
         ORDER BY name;
     ]],
 })

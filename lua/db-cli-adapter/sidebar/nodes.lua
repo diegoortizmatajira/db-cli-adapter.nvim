@@ -5,7 +5,6 @@ local config = require("db-cli-adapter.config").current
 local M = {
 	--- @type DbCliAdapter.SidebarNodeData|NuiTree.Node
 	database_node = nil,
-	schema_map = {},
 }
 
 --- @class DbCliAdapter.SidebarNodeData
@@ -16,7 +15,7 @@ local M = {
 --- @field description? string Additional description text for the node
 --- @field count? number The number of child nodes (e.g., number of tables in a schema)
 --- @field expandable? boolean Whether the node can be expanded to show children
---- @field refresh? fun(tree: NuiTree, adapter: DbCliAdapter.AdapterConfig): nil A function to refresh the node's contents
+--- @field refresh? fun(self: DbCliAdapter.SidebarNodeData|NuiTree.Node, tree: NuiTree, adapter: DbCliAdapter.AdapterConfig): nil A function to refresh the node's contents
 
 function M.get_schema_id(schema_name)
 	return "schema_" .. schema_name
@@ -31,14 +30,16 @@ end
 --- @param children? table A list of child nodes
 --- @return DbCliAdapter.SidebarNodeData|NuiTree.Node A new SidebarNode instance
 function M.new_node(o, children)
-	o = vim.tbl_extend("force", {
+	--- @type DbCliAdapter.SidebarNodeData
+	local default = {
 		id = "",
 		icon = "",
 		icon_hl = "",
 		text = "",
 		description = nil,
 		refresh = nil,
-	}, o or {})
+	}
+	o = vim.tbl_extend("force", default, o or {})
 	o._id = o.id -- NuiTree expects _id field for unique identification
 	return NuiTree.Node(o, children)
 end
@@ -47,7 +48,7 @@ end
 ---@param id string The unique identifier for the folder node
 ---@param text string The display text for the folder node
 ---@param children? table A list of child nodes within the folder
----@param refresh? function A function to refresh the folder's contents
+---@param refresh? fun(self: NuiTree.Node, tree: NuiTree, adapter: DbCliAdapter.AdapterConfig): nil A function to refresh the node's contents
 ---@return DbCliAdapter.SidebarNodeData|NuiTree.Node A new SidebarNode instance
 function M.newFolderNode(id, text, children, refresh)
 	return M.new_node({
@@ -116,23 +117,19 @@ function M.newSchemaNode(schema_name)
 		text = schema_name,
 		tables_node = tables_node,
 		views_node = views_node,
-		refresh = function(tree, adapter)
+		refresh = function(self, tree, adapter)
 			core.run(string.format(adapter.tablesQuery, schema_name), {
 				callback = function(result)
 					if not result then
 						vim.notify("Could not refresh the sidebar", vim.log.levels.ERROR)
 						return
 					end
-					local schema_node = M.schema_map[schema_name]
-					if not schema_node then
-						vim.notify("Schema node not found for schema: " .. schema_name, vim.log.levels.WARN)
-					end
 					local table_nodes = {}
 					vim.tbl_map(function(row)
 						table.insert(table_nodes, M.newTableNode(row))
 					end, result.data.rows)
-					tree:set_nodes(table_nodes, schema_node.tables_node:get_id())
-					schema_node.tables_node.count = #table_nodes
+					tree:set_nodes(table_nodes, self.tables_node:get_id())
+					self.tables_node.count = #table_nodes
 					tree:render()
 					vim.notify(
 						string.format("'%s' schema branch refreshed succesfully", schema_name),
@@ -153,25 +150,22 @@ function M.newDatabaseNode(text)
 		icon = config and config.icons.tree.database or "",
 		icon_hl = config and config.highlight.tree.database or "",
 		text = text,
-		refresh = function(tree, adapter)
+		refresh = function(self, tree, adapter)
 			core.run(adapter.schemasQuery, {
 				callback = function(result)
 					if not result then
 						vim.notify("Could not refresh the schemas", vim.log.levels.ERROR)
 						return
 					end
-					M.schema_map = {}
 					--- Create new table nodes from the query result
 					local schema_nodes = {}
 					vim.tbl_map(function(row)
 						local node = M.newSchemaNode(row[1])
-						M.schema_map[row[1]] = node
 						table.insert(schema_nodes, node)
 					end, result.data.rows)
 					-- Replace the tables node children with the new nodes
-					tree:set_nodes(schema_nodes, M.database_node:get_id())
+					tree:set_nodes(schema_nodes, self:get_id())
 					tree:render()
-					-- M._refresh_tables(tree, adapter)
 					vim.notify("Entire database tree refreshed succesfully", vim.log.levels.INFO)
 				end,
 			})
@@ -179,26 +173,4 @@ function M.newDatabaseNode(text)
 	})
 end
 
---- Refresh the tables in the sidebar by querying the database and grouping them by schema
---- @param adapter DbCliAdapter.AdapterConfig The database adapter to use for querying tables
-function M._refresh_tables(tree, adapter)
-	core.run(adapter.tablesQuery, {
-		callback = function(result)
-			if not result then
-				vim.notify("Could not refresh the sidebar", vim.log.levels.ERROR)
-				return
-			end
-			vim.tbl_map(function(row)
-				local schema_node = M.schema_map[row[2]]
-				if not schema_node then
-					vim.notify("Schema node not found for schema: " .. row[2], vim.log.levels.WARN)
-				end
-				tree:add_node(M.newTableNode(row), schema_node.tables_node:get_id())
-			end, result.data.rows)
-
-			tree:render()
-			vim.notify("DbCliAdapter: Sidebar refreshed succesfully", vim.log.levels.INFO)
-		end,
-	})
-end
 return M
