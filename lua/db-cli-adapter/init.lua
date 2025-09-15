@@ -22,7 +22,7 @@ function M.setup(opts)
 			vim.notify("No adapter found for the current connection", vim.log.levels.ERROR)
 			return
 		end
-		core.run(adapter.tablesQuery)
+		core.run(adapter.tables_query)
 	end, { nargs = 0 })
 end
 

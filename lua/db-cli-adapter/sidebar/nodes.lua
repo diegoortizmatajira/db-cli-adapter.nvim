@@ -65,7 +65,7 @@ end
 ---@param table_row string[] A table with two elements: table name and schema name
 ---@param children? table A list of child nodes (columns)
 ---@return DbCliAdapter.SidebarNodeData|NuiTree.Node A new SidebarNode instance
-function M.newTableNode(table_row, children)
+function M.newTableNode(table_row)
 	local table_name, schema = unpack(table_row)
 	return M.new_node({
 		id = M.get_table_id(schema, table_name),
@@ -74,31 +74,43 @@ function M.newTableNode(table_row, children)
 		text = table_name,
 		table_name = table_name,
 		schema = schema,
-		refresh = function()
-			vim.notify("Refreshing table: " .. table_name, vim.log.levels.INFO)
+		refresh = function(self, tree, adapter)
+			core.run(string.format(adapter.table_columns_query, table_name, schema), {
+				callback = function(result)
+					if not result then
+						vim.notify("Could not refresh the sidebar", vim.log.levels.ERROR)
+						return
+					end
+					local column_nodes = {}
+					vim.tbl_map(function(row)
+						table.insert(column_nodes, M.newColumnNode(row, self))
+					end, result.data.rows)
+					tree:set_nodes(column_nodes, self:get_id())
+					self.count = #column_nodes
+					tree:render()
+					vim.notify(string.format("'%s' table refreshed succesfully", table_name), vim.log.levels.INFO)
+				end,
+			})
 		end,
 		expandable = true,
-	}, children)
+	})
 end
 
 --- Create a new column node
 --- @param col_definition table A table with three elements: column name, is_primary_key (boolean), data type
---- @param parent NuiTree.Node The parent node (table) to which this column belongs
+--- @param parent DbCliAdapter.SidebarNodeData|NuiTree.Node The parent node (table) to which this column belongs
 ---@return DbCliAdapter.SidebarNodeData|NuiTree.Node A new SidebarNode instance
 function M.newColumnNode(col_definition, parent)
-	local icon = config and ((col_definition[2] and config.icons.tree.key) or config.icons.tree.column)
-	local icon_hl = config and ((col_definition[2] and config.highlight.tree.key) or config.highlight.tree.column)
+	local column_name, column_type, is_pk = unpack(col_definition)
+	is_pk = is_pk == 1 or is_pk == true or is_pk == "YES"
+	local icon = config and ((is_pk and config.icons.tree.key) or config.icons.tree.column)
+	local icon_hl = config and ((is_pk and config.highlight.tree.key) or config.highlight.tree.column)
 	local node = M.new_node({
-		id = parent.id .. "_col_" .. col_definition[1],
+		id = parent.id .. "_col_" .. column_name,
 		icon = icon,
 		icon_hl = icon_hl,
-		text = col_definition[1],
-		description = col_definition[3],
-		refresh = function(adapter)
-			if parent and parent.refresh then
-				parent.refresh(adapter)
-			end
-		end,
+		text = column_name,
+		description = column_type,
 	})
 	return node
 end
@@ -118,7 +130,7 @@ function M.newSchemaNode(schema_name)
 		tables_node = tables_node,
 		views_node = views_node,
 		refresh = function(self, tree, adapter)
-			core.run(string.format(adapter.tablesQuery, schema_name), {
+			core.run(string.format(adapter.tables_query, schema_name), {
 				callback = function(result)
 					if not result then
 						vim.notify("Could not refresh the sidebar", vim.log.levels.ERROR)
@@ -151,7 +163,7 @@ function M.newDatabaseNode(text)
 		icon_hl = config and config.highlight.tree.database or "",
 		text = text,
 		refresh = function(self, tree, adapter)
-			core.run(adapter.schemasQuery, {
+			core.run(adapter.schemas_query, {
 				callback = function(result)
 					if not result then
 						vim.notify("Could not refresh the schemas", vim.log.levels.ERROR)

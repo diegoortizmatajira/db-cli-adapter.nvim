@@ -1,9 +1,10 @@
 --- @class DbCliAdapter.AdapterConfig defines the configuration for an individual adapter
 --- @field name string The name of the adapter
 --- @field command string The command to invoke the database CLI
---- @field schemasQuery? string The query to list schemas in the database
---- @field tablesQuery? string The query to list tables in the database
---- @field viewsQuery? string The query to list views in the database
+--- @field schemas_query? string The query to list schemas in the database
+--- @field tables_query? string The query to list tables in the database
+--- @field table_columns_query? string The query to list fields/columns of a table
+--- @field views_query? string The query to list views in the database
 --- @field line_preprocessor? fun(line: string): string A function to preprocess each line of output before parsing
 AdapterConfig = {
 	name = "",
@@ -15,14 +16,34 @@ AdapterConfig = {
 --- @return DbCliAdapter.AdapterConfig A new instance of AdapterConfig
 function AdapterConfig:new(config)
 	local data = vim.tbl_deep_extend("force", {
-		schemasQuery = [[SELECT schema_name 
+		schemas_query = [[SELECT schema_name 
 		    FROM information_schema.schemata
 		    ORDER BY schema_name;]],
-		tablesQuery = [[SELECT table_name, table_schema
+		tables_query = [[SELECT table_name, table_schema
 		    FROM information_schema.tables
 		    WHERE table_type='BASE TABLE' AND table_schema = '%s'
 		    ORDER by table_name;]],
-		viewsQuery = [[SELECT table_name, table_schema 
+		table_columns_query = [[SELECT 
+                c.column_name,
+                c.data_type,
+                CASE 
+                    WHEN k.column_name IS NOT NULL THEN 1
+                    ELSE 0
+                END AS is_primary_key
+            FROM information_schema.columns c
+            LEFT JOIN information_schema.key_column_usage k
+                ON c.table_name = k.table_name
+                AND c.column_name = k.column_name
+                AND k.constraint_name IN (
+                    SELECT constraint_name
+                    FROM information_schema.table_constraints
+                    WHERE table_name = c.table_name
+                    AND table_schema = c.table_schema
+                    AND constraint_type = 'PRIMARY KEY'
+                )
+            WHERE c.table_name = '%s'
+                AND c.table_schema = '%s';]],
+		views_query = [[SELECT table_name, table_schema 
 		    FROM information_schema.views 
 		    WHERE table_schema NOT IN ('pg_catalog', 'information_schema') 
 		    ORDER by table_name;]],

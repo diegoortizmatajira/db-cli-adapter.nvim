@@ -8,21 +8,21 @@ require("db-cli-adapter.adapter_config")
 local adapter = AdapterConfig:new({
 	name = "Sqlite (sqlite3)",
 	command = "sqlite3",
-	schemasQuery = [[SELECT 'public' AS schema_name;]],
-	tablesQuery = [[
+	schemas_query = [[SELECT 'public' AS schema_name;]],
+	tables_query = [[
 	       SELECT name AS table_name, 'public' AS table_schema
 	       FROM sqlite_master 
 	       WHERE type='table' 
 	       AND name NOT LIKE 'sqlite_%%'
-	       ORDER BY name;
-	   ]],
-	viewsQuery = [[
+	       ORDER BY name;]],
+	views_query = [[
         SELECT name AS table_name, 'public' AS table_schema
         FROM sqlite_master 
         WHERE type='view' 
         AND name NOT LIKE 'sqlite_%%'
-        ORDER BY name;
-    ]],
+        ORDER BY name;]],
+	table_columns_query = [[SELECT name, type, pk  
+	    FROM pragma_table_info('%s');]],
 })
 
 --- Execute a SQL command using pgcli
