@@ -1,5 +1,7 @@
 local config = require("db-cli-adapter.config")
 local core = require("db-cli-adapter.core")
+local output = require("db-cli-adapter.output")
+
 local M = {}
 
 --- Initialize the configuration for the db-cli-adapter plugin.
@@ -7,9 +9,15 @@ local M = {}
 function M.setup(opts)
 	local new_config = vim.tbl_deep_extend("force", config.current or config.default, opts or {})
 	config.update(new_config)
+	output.init()
 
 	-- Create user commands
-	vim.api.nvim_create_user_command("DbCliRunAtCursor", M.run_at_cursor, { range = true, nargs = 0 })
+	vim.api.nvim_create_user_command("DbCliRunAtCursor", function()
+		M.run_at_cursor()
+	end, { range = true, nargs = 0 })
+	vim.api.nvim_create_user_command("DbCliRunAtCursorCsv", function()
+		M.run_at_cursor(true)
+	end, { range = true, nargs = 0 })
 	vim.api.nvim_create_user_command("DbCliRunBuffer", M.run_buffer, { nargs = 0 })
 	vim.api.nvim_create_user_command("DbCliSelectConnection", M.select_connection, { nargs = 0 })
 	vim.api.nvim_create_user_command("DbCliSidebarToggle", M.toggle_sidebar, { nargs = 0 })
@@ -105,11 +113,12 @@ end
 --- is set, the user will be prompted to select a connection interactively before the
 --- query is executed.
 ---
---- @param opts table|nil Optional table of execution parameters:
+--- @param csv boolean|nil If true, the output will be formatted as CSV.
+--- @param opts DbCliAdapter.RunOptions|nil Optional table of execution parameters:
 ---   - connection (string|nil): The name of the connection to use for query execution.
 ---     If not provided, the buffer-local connection will be used, or the user will be
 ---     prompted to select one.
-function M.run_at_cursor(opts)
+function M.run_at_cursor(csv, opts)
 	local command = get_visual_selection()
 	if command == "" then
 		command = get_statement_at_cursor()
@@ -120,6 +129,9 @@ function M.run_at_cursor(opts)
 	end
 	vim.notify(string.format("Executing query:\n%s", command), vim.log.levels.INFO)
 	-- Execute the command or pass it to the database CLI
+	if csv then
+		opts = output.set_csv_output_handler()
+	end
 	core.run(command, opts)
 end
 
