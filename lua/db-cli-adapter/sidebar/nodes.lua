@@ -102,7 +102,7 @@ end
 ---@return DbCliAdapter.SidebarNodeData|NuiTree.Node A new SidebarNode instance
 function M.newColumnNode(col_definition, parent)
 	local column_name, column_type, is_pk = unpack(col_definition)
-	is_pk = is_pk == 1 or is_pk == true or is_pk == "YES"
+	is_pk = is_pk == "1" or is_pk == "true" or is_pk == "YES"
 	local icon = config and ((is_pk and config.icons.tree.key) or config.icons.tree.column)
 	local icon_hl = config and ((is_pk and config.highlight.tree.key) or config.highlight.tree.column)
 	local node = M.new_node({
