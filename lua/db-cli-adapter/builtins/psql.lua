@@ -51,7 +51,7 @@ function adapter:query(command, params, callback)
 	table.insert(args, "-P")
 	table.insert(args, "linestyle=old-ascii")
 	--- Pass the command to execute
-	table.insert(args, string.format([[--command=%s]], command))
+	table.insert(args, string.format([[--command=%s]], self:parse_command(command, params)))
 
 	return self:run_command({
 		cmd = self.command,

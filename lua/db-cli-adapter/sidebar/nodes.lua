@@ -75,7 +75,7 @@ function M.newTableNode(table_row)
 		table_name = table_name,
 		schema = schema,
 		refresh = function(self, tree, adapter)
-			core.run(string.format(adapter.table_columns_query, table_name, schema), {
+			core.run(adapter:get_table_columns_query(table_name, schema), {
 				callback = function(result)
 					if not result then
 						vim.notify("Could not refresh the sidebar", vim.log.levels.ERROR)
@@ -130,7 +130,7 @@ function M.newSchemaNode(schema_name)
 		tables_node = tables_node,
 		views_node = views_node,
 		refresh = function(self, tree, adapter)
-			core.run(string.format(adapter.tables_query, schema_name), {
+			core.run(adapter:get_tables_query(schema_name), {
 				callback = function(result)
 					if not result then
 						vim.notify("Could not refresh the sidebar", vim.log.levels.ERROR)
@@ -163,7 +163,7 @@ function M.newDatabaseNode(text)
 		icon_hl = config and config.highlight.tree.database or "",
 		text = text,
 		refresh = function(self, tree, adapter)
-			core.run(adapter.schemas_query, {
+			core.run(adapter:get_schemas_query(), {
 				callback = function(result)
 					if not result then
 						vim.notify("Could not refresh the schemas", vim.log.levels.ERROR)

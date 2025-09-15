@@ -18,6 +18,7 @@ local C = {
 			sqlite = require("db-cli-adapter.builtins.sqlite"),
 			mysql = require("db-cli-adapter.builtins.mysql"),
 			mariadb = require("db-cli-adapter.builtins.mariadb"),
+			usql = require("db-cli-adapter.builtins.usql"),
 		},
 		sources = {
 			global = vim.fn.stdpath("data") .. "/db-cli-adapter/global-connections.json",

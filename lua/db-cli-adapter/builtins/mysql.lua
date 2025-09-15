@@ -58,7 +58,7 @@ function adapter:query(command, params, callback)
 		table.insert(args, "--skip-ssl")
 	end
 	table.insert(args, "--table")
-	table.insert(args, string.format([[--execute=%s]], command))
+	table.insert(args, string.format([[--execute=%s]], self:parse_command(command, params)))
 
 	return self:run_command({
 		cmd = self.command,

@@ -40,7 +40,7 @@ function adapter:query(command, params, callback)
 		table.insert(args, string.format([[".timeout %s"]], params.timeout * 1000)) -- timeout in milliseconds
 	end
 	table.insert(args, params.filename)
-	table.insert(args, string.format([["%s"]], command))
+	table.insert(args, string.format([["%s"]], self:parse_command(command, params)))
 	local env = {}
 
 	return self:run_command({

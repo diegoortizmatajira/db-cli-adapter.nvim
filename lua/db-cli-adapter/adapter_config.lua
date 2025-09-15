@@ -184,3 +184,47 @@ function AdapterConfig:run_command(opts)
 	end
 	self:_run_with_overseer(opts)
 end
+
+--- Returns the query to list schemas in the database
+--- @return string|fun(connection:DbCliAdapter.base_params): string result The literal query string or a function that returns the query string
+function AdapterConfig:get_schemas_query()
+	if not self.schemas_query then
+		vim.notify("Schemas query not defined for adapter: " .. self.name, vim.log.levels.WARN)
+		return ""
+	end
+	return self.schemas_query
+end
+
+--- Returns the query to list tables in the database for a specific schema
+--- @param schema string The schema name to filter tables
+--- @return string|fun(connection:DbCliAdapter.base_params): string result The literal query string or a function that returns the query string
+function AdapterConfig:get_tables_query(schema)
+	if not self.tables_query then
+		vim.notify("Tables query not defined for adapter: " .. self.name, vim.log.levels.WARN)
+		return ""
+	end
+	return string.format(self.tables_query, schema)
+end
+
+--- Returns the query to list fields/columns of a specific table in a specific schema
+--- @param table string The table name to get columns for
+--- @param schema string The schema name where the table resides
+--- @return string|fun(connection:DbCliAdapter.base_params): string result The literal query string or a function that returns the query string
+function AdapterConfig:get_table_columns_query(table, schema)
+	if not self.table_columns_query then
+		vim.notify("Table columns query not defined for adapter: " .. self.name, vim.log.levels.WARN)
+		return ""
+	end
+	return string.format(self.table_columns_query, table, schema)
+end
+
+--- Returns the query string to be executed
+--- @param command string|fun(connection:DbCliAdapter.base_params): string The command string or a function that returns the command string
+--- @param connection DbCliAdapter.base_params The connection parameters
+--- @return string The resolved command string
+function AdapterConfig:parse_command(command, connection)
+	if type(command) == "function" then
+		command = command(connection)
+	end
+	return command
+end
