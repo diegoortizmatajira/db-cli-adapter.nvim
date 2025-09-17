@@ -20,6 +20,7 @@ function M.setup(opts)
 	vim.api.nvim_create_user_command("DbCliRunBuffer", M.run_buffer, { nargs = 0 })
 	vim.api.nvim_create_user_command("DbCliSelectConnection", M.select_connection, { nargs = 0 })
 	vim.api.nvim_create_user_command("DbCliSidebarToggle", M.toggle_sidebar, { nargs = 0 })
+	vim.api.nvim_create_user_command("DbCliOutputToggle", M.toggle_output, { nargs = 0 })
 	vim.api.nvim_create_user_command("DbCliEditConnection", function(o)
 		M.edit_connections_source(o.args)
 	end, { nargs = "?" })
@@ -177,6 +178,11 @@ end
 function M.toggle_sidebar()
 	local sidebar = require("db-cli-adapter.sidebar")
 	sidebar.toggle()
+end
+
+function M.toggle_output()
+	local output_panel = require("db-cli-adapter.output")
+	output_panel.toggle()
 end
 
 return M
