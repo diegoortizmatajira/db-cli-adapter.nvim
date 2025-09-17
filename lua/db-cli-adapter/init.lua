@@ -9,7 +9,6 @@ local M = {}
 function M.setup(opts)
 	local new_config = vim.tbl_deep_extend("force", config.current or config.default, opts or {})
 	config.update(new_config)
-	output.init()
 
 	-- Create user commands
 	vim.api.nvim_create_user_command("DbCliRunAtCursor", function()
