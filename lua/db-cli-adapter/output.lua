@@ -26,25 +26,19 @@ end
 --- @param opts DbCliAdapter.RunOptions|nil Optional table of execution parameters:
 function M.set_csv_output_handler(opts)
 	opts = opts or {}
+	-- Create a new temp file to store the CSV output
+	opts.csv_file = os.tmpname() .. ".csv"
 	opts.callback = function(output)
-		-- Createa new temp file to store the CSV output
-		local temp_file = os.tmpname() .. ".csv"
-		local file = io.open(temp_file, "w")
-		if file then
-			file:write(table.concat(output.data.column_names, ",") .. "\n")
-			for _, row in ipairs(output.data.rows) do
-				file:write(table.concat(row, ",") .. "\n")
-			end
-			file:close()
-		else
-			vim.notify("Failed to create temporary file for CSV output", vim.log.levels.ERROR)
-			return
+		vim.notify(vim.inspect(output), vim.log.levels.INFO)
+		-- Focus the split window
+		if not (M.split.winid and vim.api.nvim_win_is_valid(M.split.winid)) then
+			M.split:mount()
 		end
 		M.split:show()
-		-- Focus the split window
 		vim.api.nvim_set_current_win(M.split.winid)
 		-- Open the CSV file in a new buffer
-		vim.cmd("edit " .. temp_file)
+		vim.cmd("edit " .. opts.csv_file)
+		vim.bo.filetype = "db-cli-output.csv"
 	end
 	return opts
 end

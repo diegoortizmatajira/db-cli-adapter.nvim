@@ -69,3 +69,4 @@
 --- @field connection? string The name of the connection to use. If not provided, the buffer-local connection will be used.
 --- @field timeout? number Timeout in seconds for the query execution
 --- @field callback? fun(output: DbCliAdapter.Output) Optional callback function to handle the
+--- @field csv_file? string If provided, the query output will be saved to this CSV file

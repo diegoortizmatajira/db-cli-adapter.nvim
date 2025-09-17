@@ -28,8 +28,8 @@ local adapter = AdapterConfig:new({
 --- Execute a SQL command using pgcli
 --- @param command string The SQL command to execute
 --- @param params DbCliAdapter.mysql_params Connection parameters
---- @param callback fun(result: DbCliAdapter.Output) A callback function to handle the query result
-function adapter:query(command, params, callback)
+--- @param opts? DbCliAdapter.RunOptions Optional table of execution parameters:
+function adapter:query(command, params, opts)
 	local args = {}
 	local env = {}
 
@@ -64,7 +64,7 @@ function adapter:query(command, params, callback)
 		cmd = self.command,
 		args = args,
 		env = env,
-		callback = callback,
+		callback = opts and opts.callback,
 	})
 end
 

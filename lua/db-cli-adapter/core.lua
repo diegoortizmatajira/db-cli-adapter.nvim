@@ -123,7 +123,7 @@ local function _run(query, opts)
 		vim.notify("Adapter not found: " .. tostring(connection.adapter), vim.log.levels.ERROR)
 		return
 	end
-	adapter:query(query, connection, opts.callback)
+	adapter:query(query, connection, opts)
 end
 
 --- Executes a database query.

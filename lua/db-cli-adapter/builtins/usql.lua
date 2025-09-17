@@ -13,8 +13,8 @@ local adapter = AdapterConfig:new({
 --- Execute a SQL command using pgcli
 --- @param command string The SQL command to execute
 --- @param params DbCliAdapter.usql_params Connection parameters
---- @param callback fun(result: DbCliAdapter.Output) A callback function to handle the query result
-function adapter:query(command, params, callback)
+--- @param opts? DbCliAdapter.RunOptions Optional table of execution parameters:
+function adapter:query(command, params, opts)
 	local args = {
 		params.url,
 	}
@@ -23,12 +23,20 @@ function adapter:query(command, params, callback)
 	--- Disable pager to avoid issues with output capturing
 	table.insert(args, "-P")
 	table.insert(args, "pager=off")
-	table.insert(args, "-P")
-	table.insert(args, "format=aligned")
-	table.insert(args, "-P")
-	table.insert(args, "border=2")
-	table.insert(args, "-P")
-	table.insert(args, "linestyle=old-ascii")
+	if opts and opts.csv_file then
+		-- If CSV output is requested, set the appropriate commands
+		table.insert(args, "--csv")
+		table.insert(args, "--out")
+		table.insert(args, opts.csv_file)
+	else
+		-- Default to table output mode
+		table.insert(args, "-P")
+		table.insert(args, "format=aligned")
+		table.insert(args, "-P")
+		table.insert(args, "border=2")
+		table.insert(args, "-P")
+		table.insert(args, "linestyle=old-ascii")
+	end
 	--- Pass the command to execute
 	table.insert(args, string.format([[--command=%s]], self:parse_command(command, params)))
 
@@ -36,7 +44,7 @@ function adapter:query(command, params, callback)
 		cmd = self.command,
 		args = args,
 		env = env,
-		callback = callback,
+		callback = opts and opts.callback,
 	})
 end
 

@@ -62,8 +62,8 @@ end
 --- Sends a query to the database, should be overridden by specific adapters
 --- @param command string The SQL command to execute
 --- @param params DbCliAdapter.base_params Connection parameters
---- @param callback fun(result: DbCliAdapter.Output) A callback function to handle the query result
-function AdapterConfig:query(command, params, callback)
+--- @param opts? DbCliAdapter.RunOptions Optional table of execution parameters:
+function AdapterConfig:query(command, params, opts)
 	vim.notify("Query method not implemented for adapter: " .. self.name, vim.log.levels.WARN)
 end
 
@@ -125,7 +125,6 @@ end
 --- @param opts DbCliAdapter.ExecutionOptions Execution options including command, args, env, and UI display preference
 function AdapterConfig:_run_with_system(opts)
 	local shell = require("overseer.shell")
-
 	local full_cmd = vim.list_extend({ opts.cmd }, opts.args or {})
 	local command = shell.escape_cmd(full_cmd)
 	-- Clear empty env to avoid issues with vim.fn.jobstart

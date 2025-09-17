@@ -28,13 +28,24 @@ local adapter = AdapterConfig:new({
 --- Execute a SQL command using pgcli
 --- @param command string The SQL command to execute
 --- @param params DbCliAdapter.sqlite_params Connection parameters
---- @param callback fun(result: DbCliAdapter.Output) A callback function to handle the query result
-function adapter:query(command, params, callback)
+--- @param opts? DbCliAdapter.RunOptions Optional table of execution parameters:
+function adapter:query(command, params, opts)
 	local args = {
 		"-markdown",
-		"-cmd",
-		".mode table",
 	}
+	if opts and opts.csv_file then
+		-- If CSV output is requested, set the appropriate commands
+		table.insert(args, "-cmd")
+		table.insert(args, '".headers on"')
+		table.insert(args, "-cmd")
+		table.insert(args, string.format([[".output %s"]], opts.csv_file))
+		table.insert(args, "-cmd")
+		table.insert(args, '".mode csv"')
+	else
+		-- Default to table output mode
+		table.insert(args, "-cmd")
+		table.insert(args, '".mode table"')
+	end
 	if params and params.timeout then
 		table.insert(args, "-cmd")
 		table.insert(args, string.format([[".timeout %s"]], params.timeout * 1000)) -- timeout in milliseconds
@@ -47,7 +58,7 @@ function adapter:query(command, params, callback)
 		cmd = self.command,
 		args = args,
 		env = env,
-		callback = callback,
+		callback = opts and opts.callback,
 	})
 end
 
