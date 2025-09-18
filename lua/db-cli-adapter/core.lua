@@ -37,9 +37,10 @@ function M.get_available_connections(cache_only)
 			if decoded and type(decoded) == "table" then
 				for name, conn in pairs(decoded) do
 					local source_icon = config.current.icons.source[key] or key
-					local adapter_icon = config.current.icons.adapter[conn.adapter]
+					local adapter = config.current.adapters[conn.adapter]
+					local adapter_icon = adapter and adapter:get_icon(conn)
 						or config.current.icons.adapter.default
-						or "󰪩"
+						or "󰪩 "
 					connections[string.format("%s%s %s", source_icon, adapter_icon, name)] = conn
 				end
 			end

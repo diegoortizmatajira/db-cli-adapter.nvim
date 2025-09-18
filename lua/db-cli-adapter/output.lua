@@ -55,11 +55,19 @@ function M.show_csv_output(csv_file)
 	local config = require("db-cli-adapter.config").current
 	M.show()
 	vim.api.nvim_buf_call(M.split.bufnr, function()
+		-- Set the buffer to be modifiable
+		vim.bo.modifiable = true
+		vim.bo.readonly = false
+
 		-- Delete all lines in the buffer
 		vim.api.nvim_buf_set_lines(M.split.bufnr, 0, -1, false, {})
 		vim.bo.filetype = "db-cli-output.csv"
 		-- Read the CSV file in a new buffer
 		vim.cmd("0read " .. csv_file)
+
+		-- Set the buffer to be readonly again
+		vim.bo.modifiable = false
+		vim.bo.readonly = true
 		if config and config.output and config.output.csv and config.output.csv.after_query_callback then
 			config.output.csv.after_query_callback(M.split.bufnr, csv_file)
 		end

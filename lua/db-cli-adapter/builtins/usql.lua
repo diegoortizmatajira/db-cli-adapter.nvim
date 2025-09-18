@@ -5,9 +5,25 @@ require("db-cli-adapter.adapter_config")
 --- @field url string The database connection URL
 
 --- @class DbCliAdapter.usql_adapter: DbCliAdapter.AdapterConfig
+--- @field icons table<string, string> A mapping of database types to their respective icons
 local adapter = AdapterConfig:new({
 	name = "Universal Sql (usql)",
 	command = "usql",
+	icons = {
+		pg = "psql",
+		postgres = "psql",
+		pgsql = "psql",
+		sq = "sqlite",
+		sqlite = "sqlite",
+		sqlite3 = "sqlite",
+		["file"] = "sqlite",
+		maria = "mariadb",
+		mariadb = "mariadb",
+		my = "mysql",
+		mysql = "mysql",
+		aurora = "mysql",
+		percona = "mysql",
+	},
 })
 
 --- Execute a SQL command using pgcli
@@ -46,6 +62,19 @@ function adapter:query(command, params, opts)
 		env = env,
 		callback = opts and opts.callback,
 	})
+end
+
+--- Return the icon for the adapter
+--- @param params DbCliAdapter.usql_params Connection parameters
+function adapter:get_icon(params)
+	local config = require("db-cli-adapter.config").current
+	for key, value in pairs(adapter.icons) do
+		if params.url:match("^" .. key) then
+			local icon = value or "default"
+			return config and config.icons.adapter[icon] or AdapterConfig.get_icon(self, params)
+		end
+	end
+	return AdapterConfig.get_icon(self, params)
 end
 
 function adapter:get_schemas_query()

@@ -1,5 +1,6 @@
 --- @class DbCliAdapter.base_params
 --- @field timeout number Timeout in seconds for the connection
+--- @field adapter string The adapter name (e.g., "psql", "sqlite", "usql", "mysql", "mariadb".)
 
 --- @class DbCliAdapter.OutputData
 --- @field column_names string[] List of column names in the output
