@@ -71,6 +71,11 @@ local C = {
 				refresh_all = { "R" },
 			},
 		},
+		output = {
+			csv = {
+				after_query_callback = nil,
+			},
+		},
 	},
 	--- @type DbCliAdapter.Config|nil
 	current = nil,

@@ -127,7 +127,6 @@ function M.run_at_cursor(csv, opts)
 			return
 		end
 	end
-	vim.notify(string.format("Executing query:\n%s", command), vim.log.levels.INFO)
 	-- Execute the command or pass it to the database CLI
 	if csv then
 		opts = output.set_csv_output_handler()
