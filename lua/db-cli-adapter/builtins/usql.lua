@@ -6,6 +6,7 @@ require("db-cli-adapter.adapter_config")
 
 --- @class DbCliAdapter.usql_adapter: DbCliAdapter.AdapterConfig
 --- @field icons table<string, string> A mapping of database types to their respective icons
+--- @field sqlls_drivers table<string, string> A mapping of database types to their respective icons
 local adapter = AdapterConfig:new({
 	name = "Universal Sql (usql)",
 	command = "usql",
@@ -19,6 +20,21 @@ local adapter = AdapterConfig:new({
 		["file"] = "sqlite",
 		maria = "mariadb",
 		mariadb = "mariadb",
+		my = "mysql",
+		mysql = "mysql",
+		aurora = "mysql",
+		percona = "mysql",
+	},
+	sqlls_drivers = {
+		pg = "postgres",
+		postgres = "postgres",
+		pgsql = "postgres",
+		sq = "sqlite",
+		sqlite = "sqlite",
+		sqlite3 = "sqlite",
+		["file"] = "sqlite",
+		maria = "mysql",
+		mariadb = "mysql",
 		my = "mysql",
 		mysql = "mysql",
 		aurora = "mysql",
@@ -64,17 +80,35 @@ function adapter:query(command, params, opts)
 	})
 end
 
+local function get_matching_value(url, list, default)
+	if url then
+		for key, value in pairs(list) do
+			if url:match("^" .. key) then
+				return value or default
+			end
+		end
+	end
+	return default
+end
+
 --- Return the icon for the adapter
 --- @param params DbCliAdapter.usql_params Connection parameters
 function adapter:get_icon(params)
 	local config = require("db-cli-adapter.config").current
-	for key, value in pairs(adapter.icons) do
-		if params.url:match("^" .. key) then
-			local icon = value or "default"
-			return config and config.icons.adapter[icon] or AdapterConfig.get_icon(self, params)
-		end
-	end
-	return AdapterConfig.get_icon(self, params)
+	local matching_icon = get_matching_value(params.url, adapter.icons or {}, "default")
+
+	return config and config.icons.adapter[matching_icon] or AdapterConfig.get_icon(self, params)
+end
+
+--- Return the connection URL for the adapter
+--- @param params DbCliAdapter.usql_params Connection parameters
+--- @return DbCliAdapter.ConnectionChangedData
+function adapter:get_url_connection(params)
+	local driver = get_matching_value(params.url, adapter.sqlls_drivers or {}, "")
+	return {
+		url = params.url,
+		sqlls_driver = driver,
+	}
 end
 
 function adapter:get_schemas_query()

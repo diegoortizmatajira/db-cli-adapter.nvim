@@ -62,4 +62,15 @@ function adapter:query(command, params, opts)
 	})
 end
 
+---
+--- Return the connection URL for the adapter
+--- @param params DbCliAdapter.sqlite_params Connection parameters
+--- @return DbCliAdapter.ConnectionChangedData
+function adapter:get_url_connection(params)
+	return {
+		url = string.format("sqlite://%s", params.filename or "database.sqlite"),
+		sqlls_driver = "sqlite3",
+	}
+end
+
 return adapter

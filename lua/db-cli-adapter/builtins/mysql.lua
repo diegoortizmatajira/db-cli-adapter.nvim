@@ -68,4 +68,22 @@ function adapter:query(command, params, opts)
 	})
 end
 
+---
+--- Return the connection URL for the adapter
+--- @param params DbCliAdapter.mysql_params Connection parameters
+--- @return DbCliAdapter.ConnectionChangedData
+function adapter:get_url_connection(params)
+	return {
+		url = string.format(
+			"mysql://%s:%s@%s:%s/%s",
+			params.username or "user",
+			params.password or "password",
+			params.host or "localhost",
+			params.port or 5432,
+			params.dbname or "database"
+		),
+		sqlls_driver = "mysql",
+	}
+end
+
 return adapter

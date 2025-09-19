@@ -71,7 +71,12 @@
 --- @class DbCliAdapter.OutputConfig defines parameters for output configuration
 --- @field csv DbCliAdapter.CsvOutputConfig Configuration for CSV output
 
+--- @class DbCliAdapter.ConnectionChangedData
+--- @field url string The new connection URL
+--- @field sqlls_driver string The database driver associated with the connection
+
 --- @class  DbCliAdapter.Config defines the configuration structure for DbCliAdapter
+--- @field restart_lsp_client? string|fun(bufnr: number, connection_data: DbCliAdapter.ConnectionChangedData, restart_fn: fun(lsp_name: string)) Optional name of the LSP client to restart or a function to handle the restart
 --- @field adapters table<string, DbCliAdapter.AdapterConfig> List of adapter configurations
 --- @field sources table<string, string|fun():string> A mapping of source names to their configurations
 --- @field sidebar DbCliAdapter.SidebarConfig Configuration for the sidebar

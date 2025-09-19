@@ -13,6 +13,7 @@ local C = {
 
 	--- @type DbCliAdapter.Config
 	default = {
+	    restart_lsp_client=nil,
 		adapters = {
 			psql = require("db-cli-adapter.builtins.psql"),
 			sqlite = require("db-cli-adapter.builtins.sqlite"),

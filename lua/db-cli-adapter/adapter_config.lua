@@ -59,6 +59,15 @@ function AdapterConfig:get_icon(params)
 	return config and (config.icons.adapter[params.adapter] or config.icons.adapter["default"]) or "󰪩 "
 end
 
+--- @param params DbCliAdapter.base_params Connection parameters
+--- @return DbCliAdapter.ConnectionChangedData
+function AdapterConfig:get_url_connection(params)
+	return {
+		url = "",
+		sqlls_driver = "",
+	}
+end
+
 --- Validates the command is available in the system
 function AdapterConfig:health_check()
 	local utils = require("db-cli-adapter.utils")
