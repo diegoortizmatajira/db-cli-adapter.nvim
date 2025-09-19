@@ -72,17 +72,18 @@ end
 --- @param params DbCliAdapter.pgsql_params Connection parameters
 --- @return DbCliAdapter.ConnectionChangedData
 function adapter:get_url_connection(params)
-	return {
-		url = string.format(
-			"postgresql://%s:%s@%s:%s/%s",
-			params.username or "user",
-			params.password or "password",
-			params.host or "localhost",
-			params.port or 5432,
-			params.dbname or "database"
-		),
-		sqlls_driver = "postgres",
-	}
+	--- @type DbCliAdapter.ConnectionChangedData
+	return ConnectionChangedData:new({
+		name = "Db-Cli-Adapter connection",
+		adapter = "postgres",
+		host = params.host or "localhost",
+		port = params.port or 5432,
+		user = params.username or "user",
+		password = params.password or "password",
+		database = params.dbname or "database",
+		-- Provides a default project path as the current working directory
+		projectPaths = { vim.fn.getcwd() },
+	})
 end
 
 return adapter

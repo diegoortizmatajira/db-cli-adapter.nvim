@@ -72,11 +72,71 @@
 --- @field csv DbCliAdapter.CsvOutputConfig Configuration for CSV output
 
 --- @class DbCliAdapter.ConnectionChangedData
---- @field url string The new connection URL
---- @field sqlls_driver string The database driver associated with the connection
+--- @field name string The name of the new connection
+--- @field adapter string The adapter type of the new connection
+--- @field host? string The host of the new connection
+--- @field port? number The port of the new connection
+--- @field user? string The user of the new connection
+--- @field password? string The password of the new connection
+--- @field database? string The database name of the new connection
+--- @field filename? string The filename (for file-based DBs) of the new connection
+--- @field projectPaths? string[] List of project paths associated with the new connection
+ConnectionChangedData = {}
+
+--- Constructor for ConnectionChangedData
+--- @param o? DbCliAdapter.ConnectionChangedData Optional table to initialize the instance
+function ConnectionChangedData:new(o)
+	o = o or {}
+	setmetatable(o, self)
+	self.__index = self
+	return o
+end
+
+local _sqls_drivers = {
+	postgres = "postgresql",
+}
+
+local _default_connection_values = {
+	postgres = {
+		host = "localhost",
+		port = 5432,
+		user = "user",
+		password = "password",
+		database = "database",
+		proto = "tcp",
+	},
+	mysql = {
+		host = "localhost",
+		port = 3306,
+		user = "user",
+		password = "password",
+		database = "database",
+		proto = "tcp",
+	},
+}
+
+function ConnectionChangedData:as_sqlls_connection()
+	return self
+end
+
+function ConnectionChangedData:as_sqls_connection()
+	local driver = _sqls_drivers[self.adapter] or self.adapter
+	local defaults = _default_connection_values[self.adapter] or {}
+	local config = vim.tbl_deep_extend("force", defaults, self)
+	return {
+		driver = driver,
+		host = config.host,
+		port = config.port,
+		user = config.user,
+		passwd = config.password,
+		dbName = config.database,
+		proto = config.proto,
+		dataSourceName = config.filename and string.format("file:%s", config.filename) or nil,
+	}
+end
 
 --- @class  DbCliAdapter.Config defines the configuration structure for DbCliAdapter
---- @field restart_lsp_client? string|fun(bufnr: number, connection_data: DbCliAdapter.ConnectionChangedData, restart_fn: fun(lsp_name: string)) Optional name of the LSP client to restart or a function to handle the restart
+--- @field connection_change_handler? fun(bufnr: number, connection_data: DbCliAdapter.ConnectionChangedData) Optional function to handle the restart
 --- @field adapters table<string, DbCliAdapter.AdapterConfig> List of adapter configurations
 --- @field sources table<string, string|fun():string> A mapping of source names to their configurations
 --- @field sidebar DbCliAdapter.SidebarConfig Configuration for the sidebar

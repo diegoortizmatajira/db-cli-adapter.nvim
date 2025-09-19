@@ -70,22 +70,16 @@ function M.trigger_connection_changed()
 	if vim.b.db_cli_adapter_connection_changed and type(vim.b.db_cli_adapter_connection_changed) == "function" then
 		vim.b.db_cli_adapter_connection_changed(vim.b.db_cli_adapter_connection)
 	end
-	if config.current.restart_lsp_client then
-		local function restart_lsp(name)
-			vim.lsp.stop_client(vim.lsp.get_clients({ name = name }))
-			vim.cmd("edit")
-		end
-		if type(config.current.restart_lsp_client) == "string" then
-			restart_lsp(config.current.restart_lsp_client)
-		elseif type(config.current.restart_lsp_client) == "function" then
-			local conn_name = M.get_buffer_db_connection()
-			local connections = M.get_available_connections(true)
-			local conn = connections[conn_name]
-			local adapter = M.get_buffer_db_adapter()
-			local url = adapter and adapter:get_url_connection(conn)
-			if url then
-				config.current.restart_lsp_client(0, url, restart_lsp)
-			end
+	if config.current.connection_change_handler then
+		--- Retrieves the current connection name and adapter for the buffer,
+		local conn_name = M.get_buffer_db_connection()
+		local adapter = M.get_buffer_db_adapter()
+		--- Retrieves the connection details from the available connections.
+		local connections = M.get_available_connections(true)
+		local conn = connections[conn_name]
+		local url_data = adapter and adapter:get_url_connection(conn)
+		if url_data then
+			config.current.connection_change_handler(0, url_data)
 		end
 	end
 end

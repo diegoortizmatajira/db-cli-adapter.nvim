@@ -104,11 +104,32 @@ end
 --- @param params DbCliAdapter.usql_params Connection parameters
 --- @return DbCliAdapter.ConnectionChangedData
 function adapter:get_url_connection(params)
+	--- Simple URL decomposition to extract the parts: scheme, user, password, host, port, dbname
+	local function decompose_url(url)
+		local pattern = "^(%w+)://([^:/]+):([^@]+)@([^:/]+):?(%d*)/([^?]*)"
+		local scheme, user, password, host, port, dbname = url:match(pattern)
+		return {
+			scheme = scheme,
+			user = user,
+			password = password,
+			host = host,
+			port = port ~= "" and tonumber(port) or nil,
+			dbname = dbname,
+		}
+	end
 	local driver = get_matching_value(params.url, adapter.sqlls_drivers or {}, "")
-	return {
-		url = params.url,
-		sqlls_driver = driver,
-	}
+	local parts = decompose_url(params.url)
+	return ConnectionChangedData:new({
+		name = "Db-Cli-Adapter connection",
+		adapter = driver,
+		host = parts.host,
+		port = parts.port,
+		user = parts.user,
+		password = parts.password,
+		database = parts.dbname,
+		-- Provides a default project path as the current working directory
+		projectPaths = { vim.fn.getcwd() },
+	})
 end
 
 function adapter:get_schemas_query()

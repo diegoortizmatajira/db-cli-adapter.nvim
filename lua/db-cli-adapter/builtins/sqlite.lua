@@ -67,10 +67,13 @@ end
 --- @param params DbCliAdapter.sqlite_params Connection parameters
 --- @return DbCliAdapter.ConnectionChangedData
 function adapter:get_url_connection(params)
-	return {
-		url = string.format("sqlite://%s", params.filename or "database.sqlite"),
-		sqlls_driver = "sqlite3",
-	}
+	return ConnectionChangedData:new({
+		name = "Db-Cli-Adapter connection",
+		adapter = "sqlite3",
+		filename = params.filename or "database.sqlite",
+		-- Provides a default project path as the current working directory
+		projectPaths = { vim.fn.getcwd() },
+	})
 end
 
 return adapter

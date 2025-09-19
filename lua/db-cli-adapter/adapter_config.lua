@@ -63,8 +63,8 @@ end
 --- @return DbCliAdapter.ConnectionChangedData
 function AdapterConfig:get_url_connection(params)
 	return {
-		url = "",
-		sqlls_driver = "",
+		name = "Empty connection",
+		adapter = self.name,
 	}
 end
 

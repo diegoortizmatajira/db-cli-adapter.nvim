@@ -13,7 +13,7 @@ local C = {
 
 	--- @type DbCliAdapter.Config
 	default = {
-	    restart_lsp_client=nil,
+		connection_change_handler = nil,
 		adapters = {
 			psql = require("db-cli-adapter.builtins.psql"),
 			sqlite = require("db-cli-adapter.builtins.sqlite"),
@@ -91,6 +91,43 @@ function C.update(new_config)
 		return
 	end
 	C.current = new_config
+end
+
+local function lsp_restart(server_name, settings)
+	--- Provides a default implementation for sqlls LSP restart on connection change
+	local clients = vim.lsp.get_clients({ name = server_name })
+	if #clients == 0 then
+		return
+	end
+	vim.lsp.stop_client(clients, true)
+	local lsp_config = vim.lsp.config[server_name]
+	-- Reconfigure and restart the LSP with the new connection settings
+	lsp_config.settings = settings
+	vim.lsp.start(lsp_config)
+end
+
+--- Default connection change handler that restarts the sqlls LSP with the new connection settings.
+--- This function can be overridden by setting the `connection_change_handler` in the configuration.
+--- @param _ number The buffer number where the connection change occurred (not used in this default implementation).
+--- @param connection DbCliAdapter.ConnectionChangedData The new connection data.
+function C.sqlls_connection_change_handler(_, connection)
+	lsp_restart("sqlls", {
+		sqlLanguageServer = {
+			connections = { connection:as_sqlls_connection() },
+		},
+	})
+end
+
+--- Default connection change handler that restarts the sqls LSP with the new connection settings.
+--- This function can be overridden by setting the `connection_change_handler` in the configuration.
+--- @param _ number The buffer number where the connection change occurred (not used in this default implementation).
+--- @param connection DbCliAdapter.ConnectionChangedData The new connection data.
+function C.sqls_connection_change_handler(_, connection)
+	lsp_restart("sqls", {
+		sqls = {
+			connections = { connection:as_sqls_connection() },
+		},
+	})
 end
 
 return C
