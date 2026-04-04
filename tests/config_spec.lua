@@ -1,0 +1,73 @@
+local config = require("db-cli-adapter.config")
+
+describe("config", function()
+	describe("default", function()
+		it("has all required adapter entries", function()
+			assert.is_not_nil(config.default.adapters.psql)
+			assert.is_not_nil(config.default.adapters.sqlite)
+			assert.is_not_nil(config.default.adapters.mysql)
+			assert.is_not_nil(config.default.adapters.mariadb)
+			assert.is_not_nil(config.default.adapters.usql)
+		end)
+
+		it("has source configurations", function()
+			assert.is_string(config.default.sources.global)
+			assert.is_function(config.default.sources.workspace)
+		end)
+
+		it("has sidebar keybindings", function()
+			local kb = config.default.sidebar.keybindings
+			assert.is_table(kb.toggle_expand)
+			assert.is_table(kb.expand)
+			assert.is_table(kb.collapse)
+			assert.is_table(kb.quit)
+			assert.is_table(kb.refresh)
+			assert.is_table(kb.refresh_all)
+		end)
+
+		it("has icon configurations", function()
+			assert.is_table(config.default.icons.tree)
+			assert.is_table(config.default.icons.source)
+			assert.is_table(config.default.icons.adapter)
+		end)
+
+		it("has correct default adapter icon key", function()
+			assert.is_not_nil(config.default.icons.adapter["default"])
+		end)
+
+		it("has highlight configurations", function()
+			assert.is_table(config.default.highlight.tree)
+		end)
+	end)
+
+	describe("update", function()
+		after_each(function()
+			config.current = nil
+		end)
+
+		it("sets current config", function()
+			config.update({ test = true })
+			assert.is_true(config.current.test)
+		end)
+
+		it("ignores nil input", function()
+			config.update(nil)
+			assert.is_nil(config.current)
+		end)
+	end)
+
+	describe("workspace source", function()
+		it("returns a path under stdpath data", function()
+			local workspace_path = config.default.sources.workspace()
+			local data_path = vim.fn.stdpath("data")
+			assert.is_truthy(workspace_path:match("^" .. vim.pesc(data_path)))
+			assert.is_truthy(workspace_path:match("workspace%-connections%.json$"))
+		end)
+
+		it("includes the folder name in the path", function()
+			local workspace_path = config.default.sources.workspace()
+			local folder_name = vim.fn.fnamemodify(vim.fn.getcwd(), ":t")
+			assert.is_truthy(workspace_path:match(vim.pesc(folder_name)))
+		end)
+	end)
+end)
