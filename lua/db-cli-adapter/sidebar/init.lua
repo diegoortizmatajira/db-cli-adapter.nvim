@@ -66,8 +66,7 @@ local function try_expand_node(node)
 			return true
 		elseif node.expandable and node.count == nil then
 			try_refresh(node, true)
-			node:expand()
-			return true
+			return false
 		end
 	end
 	return false

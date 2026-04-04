@@ -87,6 +87,7 @@ function M.newTableNode(table_row)
 					end
 					tree:set_nodes(column_nodes, self:get_id())
 					self.count = #column_nodes
+					self:expand()
 					tree:render()
 					vim.notify(string.format("'%s' table refreshed succesfully", table_name), vim.log.levels.INFO)
 				end,
@@ -142,6 +143,8 @@ function M.newSchemaNode(schema_name)
 					end
 					tree:set_nodes(table_nodes, self.tables_node:get_id())
 					self.tables_node.count = #table_nodes
+					self:expand()
+					self.tables_node:expand()
 					tree:render()
 					vim.notify(
 						string.format("'%s' schema branch refreshed succesfully", schema_name),
@@ -176,6 +179,7 @@ function M.newDatabaseNode(text)
 					end
 					-- Replace the tables node children with the new nodes
 					tree:set_nodes(schema_nodes, self:get_id())
+					self:expand()
 					tree:render()
 					vim.notify("Entire database tree refreshed succesfully", vim.log.levels.INFO)
 				end,
