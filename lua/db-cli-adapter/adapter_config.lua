@@ -174,14 +174,16 @@ function AdapterConfig:_run_with_system(opts)
 			end
 		end,
 		on_exit = function()
-			if #error_lines > 0 then
-				local msg = table.concat(error_lines, "\n")
-				if msg ~= "" then
-					vim.notify(msg, vim.log.levels.ERROR)
+			vim.schedule(function()
+				if #error_lines > 0 then
+					local msg = table.concat(error_lines, "\n")
+					if msg ~= "" then
+						vim.notify(msg, vim.log.levels.ERROR)
+					end
 				end
-			end
-			local result = self:parse_output(output_lines)
-			opts.callback(result)
+				local result = self:parse_output(output_lines)
+				opts.callback(result)
+			end)
 		end,
 	})
 end

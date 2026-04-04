@@ -7,6 +7,16 @@ local M = {}
 --- Initialize the configuration for the db-cli-adapter plugin.
 --- @param opts DbCliAdapter.Config|nil User-provided configuration options to override defaults
 function M.setup(opts)
+	if opts ~= nil then
+		vim.validate("opts", opts, "table")
+		vim.validate("opts.adapters", opts.adapters, "table", true)
+		vim.validate("opts.sources", opts.sources, "table", true)
+		vim.validate("opts.sidebar", opts.sidebar, "table", true)
+		vim.validate("opts.output", opts.output, "table", true)
+		vim.validate("opts.icons", opts.icons, "table", true)
+		vim.validate("opts.highlight", opts.highlight, "table", true)
+		vim.validate("opts.connection_change_handler", opts.connection_change_handler, "function", true)
+	end
 	local new_config = vim.tbl_deep_extend("force", config.current or config.default, opts or {})
 	config.update(new_config)
 

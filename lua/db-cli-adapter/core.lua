@@ -100,6 +100,7 @@ end
 function M.select_connection(callback)
 	local connections = M.get_available_connections()
 	local connection_names = vim.tbl_keys(connections)
+	table.sort(connection_names)
 	if #connection_names == 0 then
 		vim.notify("No connections available to select", vim.log.levels.WARN)
 		return
