@@ -31,7 +31,7 @@ local function _try_refresh_with_adapter(callback, silent)
 	end
 	-- Ensure a database connection is selected
 	if not core.buffer_has_db_connection() then
-		core.select_connection(wrapper())
+		core.select_connection(wrapper)
 		return
 	end
 	wrapper()
