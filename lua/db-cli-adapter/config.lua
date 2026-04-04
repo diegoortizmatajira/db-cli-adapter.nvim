@@ -59,7 +59,7 @@ local C = {
 				sqlite = " ",
 				mysql = " ",
 				mariadb = " ",
-				defautl = "󰪩 ",
+				default = "󰪩 ",
 			},
 		},
 		sidebar = {

@@ -79,9 +79,12 @@ end
 function M.show_text_output(output)
 	M.show()
 	vim.api.nvim_buf_call(M.split.bufnr, function()
-		-- Delete all lines in the buffer
+		vim.bo.modifiable = true
+		vim.bo.readonly = false
 		vim.api.nvim_buf_set_lines(M.split.bufnr, 0, -1, false, output.discarded_lines)
 		vim.bo.filetype = "db-cli-output.text"
+		vim.bo.modifiable = false
+		vim.bo.readonly = true
 	end)
 end
 
