@@ -21,7 +21,7 @@ local adapter = AdapterConfig:new({
         WHERE type='view' 
         AND name NOT LIKE 'sqlite_%%'
         ORDER BY name;]],
-	table_columns_query = [[SELECT name, type, pk  
+	table_columns_query = [[SELECT name, type, pk
 	    FROM pragma_table_info('%s');]],
 })
 
@@ -62,7 +62,11 @@ function adapter:query(command, params, opts)
 	})
 end
 
----
+--- Override to ignore schema (SQLite has no schemas) and only use the table name
+function adapter:get_table_columns_query(schema, table_name)
+	return string.format(self.table_columns_query, table_name)
+end
+
 --- Return the connection URL for the adapter
 --- @param params DbCliAdapter.sqlite_params Connection parameters
 --- @return DbCliAdapter.ConnectionChangedData

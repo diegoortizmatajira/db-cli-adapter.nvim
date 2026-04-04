@@ -52,8 +52,8 @@ function AdapterConfig:new(config)
                     AND table_schema = c.table_schema
                     AND constraint_type = 'PRIMARY KEY'
                 )
-            WHERE c.table_name = '%s'
-                AND c.table_schema = '%s';]],
+            WHERE c.table_schema = '%s'
+                AND c.table_name = '%s';]],
 		views_query = [[SELECT table_name, table_schema 
 		    FROM information_schema.views 
 		    WHERE table_schema NOT IN ('pg_catalog', 'information_schema') 
@@ -232,8 +232,8 @@ function AdapterConfig:get_tables_query(schema)
 end
 
 --- Returns the query to list fields/columns of a specific table in a specific schema
---- @param schema string The table name to get columns for
---- @param table string The schema name where the table resides
+--- @param schema string The schema name where the table resides
+--- @param table string The table name to get columns for
 --- @return string|fun(connection:DbCliAdapter.base_params): string result The literal query string or a function that returns the query string
 function AdapterConfig:get_table_columns_query(schema, table)
 	if not self.table_columns_query then

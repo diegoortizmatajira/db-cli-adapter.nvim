@@ -75,7 +75,7 @@ function M.newTableNode(table_row)
 		table_name = table_name,
 		schema = schema,
 		refresh = function(self, tree, adapter)
-			core.run(adapter:get_table_columns_query(table_name, schema), {
+			core.run(adapter:get_table_columns_query(schema, table_name), {
 				callback = function(result)
 					if not result then
 						vim.notify("Could not refresh the sidebar", vim.log.levels.ERROR)
