@@ -93,8 +93,13 @@ end
 --- @param opts DbCliAdapter.RunOptions|nil Optional table of execution parameters:
 function M.set_csv_output_handler(opts)
 	opts = opts or {}
+	-- Clean up the previous temp file before creating a new one
+	if M._last_csv_file then
+		os.remove(M._last_csv_file)
+	end
 	-- Create a new temp file to store the CSV output
 	opts.csv_file = os.tmpname() .. ".csv"
+	M._last_csv_file = opts.csv_file
 	opts.callback = function(output)
 		vim.notify(vim.inspect(output), vim.log.levels.DEBUG)
 		M.show_csv_output(opts.csv_file)
