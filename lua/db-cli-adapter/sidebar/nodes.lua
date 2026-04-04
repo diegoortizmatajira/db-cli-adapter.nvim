@@ -82,9 +82,9 @@ function M.newTableNode(table_row)
 						return
 					end
 					local column_nodes = {}
-					vim.tbl_map(function(row)
+					for _, row in ipairs(result.data.rows) do
 						table.insert(column_nodes, M.newColumnNode(row, self))
-					end, result.data.rows)
+					end
 					tree:set_nodes(column_nodes, self:get_id())
 					self.count = #column_nodes
 					tree:render()
@@ -137,9 +137,9 @@ function M.newSchemaNode(schema_name)
 						return
 					end
 					local table_nodes = {}
-					vim.tbl_map(function(row)
+					for _, row in ipairs(result.data.rows) do
 						table.insert(table_nodes, M.newTableNode(row))
-					end, result.data.rows)
+					end
 					tree:set_nodes(table_nodes, self.tables_node:get_id())
 					self.tables_node.count = #table_nodes
 					tree:render()
@@ -171,10 +171,9 @@ function M.newDatabaseNode(text)
 					end
 					--- Create new table nodes from the query result
 					local schema_nodes = {}
-					vim.tbl_map(function(row)
-						local node = M.newSchemaNode(row[1])
-						table.insert(schema_nodes, node)
-					end, result.data.rows)
+					for _, row in ipairs(result.data.rows) do
+						table.insert(schema_nodes, M.newSchemaNode(row[1]))
+					end
 					-- Replace the tables node children with the new nodes
 					tree:set_nodes(schema_nodes, self:get_id())
 					tree:render()

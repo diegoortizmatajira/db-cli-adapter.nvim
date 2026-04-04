@@ -17,11 +17,11 @@ function M.init()
 	})
 	M.split:mount()
 	-- Map keys for quitting the sidebar
-	vim.tbl_map(function(key)
+	for _, key in ipairs(config.sidebar.keybindings.quit) do
 		M.split:map("n", key, function()
 			M.split:hide()
 		end)
-	end, config.sidebar.keybindings.quit)
+	end
 end
 
 function M.toggle()

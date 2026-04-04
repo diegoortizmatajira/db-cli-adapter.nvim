@@ -81,7 +81,7 @@
 --- @field database? string The database name of the new connection
 --- @field filename? string The filename (for file-based DBs) of the new connection
 --- @field projectPaths? string[] List of project paths associated with the new connection
-ConnectionChangedData = {}
+local ConnectionChangedData = {}
 
 --- Constructor for ConnectionChangedData
 --- @param o? DbCliAdapter.ConnectionChangedData Optional table to initialize the instance
@@ -143,3 +143,5 @@ end
 --- @field output DbCliAdapter.OutputConfig Configuration for output handling
 --- @field icons DbCliAdapter.IconConfig Configuration for icons used in the UI
 --- @field highlight DbCliAdapter.HighlighConfig Configuration for highlight groups used in the UI
+
+return ConnectionChangedData

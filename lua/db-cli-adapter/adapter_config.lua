@@ -17,7 +17,7 @@ end
 --- @field table_columns_query? string The query to list fields/columns of a table
 --- @field views_query? string The query to list views in the database
 --- @field line_preprocessor? fun(line: string): string A function to preprocess each line of output before parsing
-AdapterConfig = {
+local AdapterConfig = {
 	name = "",
 	command = "",
 }
@@ -268,3 +268,5 @@ function AdapterConfig:parse_command(command, connection)
 	end
 	return command
 end
+
+return AdapterConfig

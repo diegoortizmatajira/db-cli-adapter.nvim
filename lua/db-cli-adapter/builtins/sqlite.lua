@@ -1,5 +1,5 @@
-require("db-cli-adapter.types")
-require("db-cli-adapter.adapter_config")
+local ConnectionChangedData = require("db-cli-adapter.types")
+local AdapterConfig = require("db-cli-adapter.adapter_config")
 
 --- @class DbCliAdapter.sqlite_params: DbCliAdapter.base_params
 --- @field filename string The name of the database to connect to

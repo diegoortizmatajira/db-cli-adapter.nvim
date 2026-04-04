@@ -1,5 +1,5 @@
-require("db-cli-adapter.types")
-require("db-cli-adapter.adapter_config")
+local ConnectionChangedData = require("db-cli-adapter.types")
+local AdapterConfig = require("db-cli-adapter.adapter_config")
 
 --- @class DbCliAdapter.usql_params: DbCliAdapter.base_params
 --- @field url string The database connection URL

@@ -119,7 +119,7 @@ function M.init()
 	})
 	M.tree:render()
 	--- Map keys for toggling expand/collapse of a tree node
-	vim.tbl_map(function(key)
+	for _, key in ipairs(config.current.sidebar.keybindings.toggle_expand) do
 		M.split:map("n", key, function()
 			local node = M.tree:get_node()
 			if node then
@@ -131,18 +131,18 @@ function M.init()
 				M.tree:render()
 			end
 		end)
-	end, config.current.sidebar.keybindings.toggle_expand)
+	end
 	-- Map keys for expanding a tree node
-	vim.tbl_map(function(key)
+	for _, key in ipairs(config.current.sidebar.keybindings.expand) do
 		M.split:map("n", key, function()
 			local node = M.tree:get_node()
 			if node and try_expand_node(node) then
 				M.tree:render()
 			end
 		end)
-	end, config.current.sidebar.keybindings.expand)
+	end
 	-- Map keys for collapsing a tree node
-	vim.tbl_map(function(key)
+	for _, key in ipairs(config.current.sidebar.keybindings.collapse) do
 		M.split:map("n", key, function()
 			local node = M.tree:get_node()
 			if node and node:has_children() then
@@ -150,30 +150,29 @@ function M.init()
 				M.tree:render()
 			end
 		end)
-	end, config.current.sidebar.keybindings.collapse)
+	end
 	-- Map keys for refreshing the selected node
-	vim.tbl_map(function(key)
+	for _, key in ipairs(config.current.sidebar.keybindings.refresh) do
 		M.split:map("n", key, function()
-			-- Find the nearest ancestor node with a refresh function
 			local node = M.tree:get_node()
 			if not node then
 				return
 			end
 			try_refresh(node)
 		end)
-	end, config.current.sidebar.keybindings.refresh)
+	end
 	-- Map keys for refreshing the sidebar
-	vim.tbl_map(function(key)
+	for _, key in ipairs(config.current.sidebar.keybindings.refresh_all) do
 		M.split:map("n", key, function()
 			M.refresh()
 		end)
-	end, config.current.sidebar.keybindings.refresh_all)
+	end
 	-- Map keys for quitting the sidebar
-	vim.tbl_map(function(key)
+	for _, key in ipairs(config.current.sidebar.keybindings.quit) do
 		M.split:map("n", key, function()
 			M.split:hide()
 		end)
-	end, config.current.sidebar.keybindings.quit)
+	end
 	-- Hides gutter and number columns
 	vim.opt_local.number = false
 	vim.opt_local.relativenumber = false
