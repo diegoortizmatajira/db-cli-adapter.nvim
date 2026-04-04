@@ -232,15 +232,15 @@ function AdapterConfig:get_tables_query(schema)
 end
 
 --- Returns the query to list fields/columns of a specific table in a specific schema
---- @param table string The table name to get columns for
---- @param schema string The schema name where the table resides
+--- @param schema string The table name to get columns for
+--- @param table string The schema name where the table resides
 --- @return string|fun(connection:DbCliAdapter.base_params): string result The literal query string or a function that returns the query string
-function AdapterConfig:get_table_columns_query(table, schema)
+function AdapterConfig:get_table_columns_query(schema, table)
 	if not self.table_columns_query then
 		vim.notify("Table columns query not defined for adapter: " .. self.name, vim.log.levels.WARN)
 		return ""
 	end
-	return string.format(self.table_columns_query, escape_sql_literal(table), escape_sql_literal(schema))
+	return string.format(self.table_columns_query, escape_sql_literal(schema), escape_sql_literal(table))
 end
 
 --- Returns the query string to be executed
