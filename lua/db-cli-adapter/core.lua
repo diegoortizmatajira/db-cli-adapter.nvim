@@ -196,7 +196,8 @@ function M.edit_connections_source(key)
 		end
 		local source_dir = vim.fn.fnamemodify(source_path, ":h")
 		vim.fn.mkdir(source_dir, "p")
-		vim.cmd("edit " .. source_path)
+		M._cached_connections = nil
+		vim.cmd.edit(vim.fn.fnameescape(source_path))
 	end
 	if key and key ~= "" then
 		vim.notify("Editing connections source for key: " .. key)

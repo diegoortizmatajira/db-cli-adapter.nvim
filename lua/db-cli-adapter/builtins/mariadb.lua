@@ -13,7 +13,7 @@ require("db-cli-adapter.adapter_config")
 --- @class DbCliAdapter.mariadb_adapter: DbCliAdapter.AdapterConfig
 local adapter = AdapterConfig:new({
 	name = "MariaDb (mariadb)",
-	command = "/usr/bin/mariadb",
+	command = "mariadb",
 	--- Use pipe characters to format output as a table when a line contains a pipe (to complete the table)
 	line_preprocessor = function(line)
 		if line:match("\t") then
