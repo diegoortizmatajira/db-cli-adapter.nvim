@@ -25,7 +25,7 @@ local adapter = AdapterConfig:new({
 	    FROM pragma_table_info('%s');]],
 })
 
---- Execute a SQL command using pgcli
+--- Execute a SQL command using sqlite3
 --- @param command string The SQL command to execute
 --- @param params DbCliAdapter.sqlite_params Connection parameters
 --- @param opts? DbCliAdapter.RunOptions Optional table of execution parameters:

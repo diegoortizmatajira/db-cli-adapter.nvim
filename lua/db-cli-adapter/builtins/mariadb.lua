@@ -25,7 +25,7 @@ local adapter = AdapterConfig:new({
 	end,
 })
 
---- Execute a SQL command using pgcli
+--- Execute a SQL command using mariadb
 --- @param command string The SQL command to execute
 --- @param params DbCliAdapter.mariadb_params Connection parameters
 --- @param opts? DbCliAdapter.RunOptions Optional table of execution parameters:

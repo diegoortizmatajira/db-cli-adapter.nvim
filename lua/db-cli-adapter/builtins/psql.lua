@@ -15,7 +15,7 @@ local adapter = AdapterConfig:new({
 	command = "psql",
 })
 
---- Execute a SQL command using pgcli
+--- Execute a SQL command using psql
 --- @param command string The SQL command to execute
 --- @param params DbCliAdapter.pgsql_params Connection parameters
 --- @param opts? DbCliAdapter.RunOptions Optional table of execution parameters:

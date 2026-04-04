@@ -42,7 +42,7 @@ local adapter = AdapterConfig:new({
 	},
 })
 
---- Execute a SQL command using pgcli
+--- Execute a SQL command using usql
 --- @param command string The SQL command to execute
 --- @param params DbCliAdapter.usql_params Connection parameters
 --- @param opts? DbCliAdapter.RunOptions Optional table of execution parameters:
