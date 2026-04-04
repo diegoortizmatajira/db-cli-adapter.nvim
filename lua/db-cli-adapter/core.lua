@@ -35,8 +35,11 @@ function M.get_available_connections(cache_only)
 		end
 		if source_path and source_path ~= "" and vim.fn.filereadable(source_path) == 1 then
 			local file_content = vim.fn.readfile(source_path)
-			local decoded = vim.fn.json_decode(table.concat(file_content, "\n"))
-			if decoded and type(decoded) == "table" then
+			local ok, decoded = pcall(vim.fn.json_decode, table.concat(file_content, "\n"))
+			if not ok then
+				vim.notify("Failed to parse connections file: " .. source_path, vim.log.levels.WARN)
+			end
+			if ok and decoded and type(decoded) == "table" then
 				for name, conn in pairs(decoded) do
 					local source_icon = config.current.icons.source[key] or key
 					local adapter = config.current.adapters[conn.adapter]
