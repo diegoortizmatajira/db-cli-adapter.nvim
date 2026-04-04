@@ -150,23 +150,36 @@ end
 
 --- @param opts DbCliAdapter.ExecutionOptions Execution options including command, args, env, and UI display preference
 function AdapterConfig:_run_with_system(opts)
-	local shell = require("overseer.shell")
 	local full_cmd = vim.list_extend({ opts.cmd }, opts.args or {})
-	local command = shell.escape_cmd(full_cmd)
+	local escaped = vim.tbl_map(vim.fn.shellescape, full_cmd)
+	local command = table.concat(escaped, " ")
 	-- Clear empty env to avoid issues with vim.fn.jobstart
 	if opts and opts.env and next(opts.env) == nil then
 		opts.env = nil
 	end
 	local output_lines = {}
+	local error_lines = {}
 	vim.fn.jobstart(command, {
 		stdout_buffered = true,
+		stderr_buffered = true,
 		env = opts.env,
 		on_stdout = function(_, data, _)
 			if data then
 				vim.list_extend(output_lines, data)
 			end
 		end,
+		on_stderr = function(_, data, _)
+			if data then
+				vim.list_extend(error_lines, data)
+			end
+		end,
 		on_exit = function()
+			if #error_lines > 0 then
+				local msg = table.concat(error_lines, "\n")
+				if msg ~= "" then
+					vim.notify(msg, vim.log.levels.ERROR)
+				end
+			end
 			local result = self:parse_output(output_lines)
 			opts.callback(result)
 		end,
