@@ -1,3 +1,14 @@
+--- Escapes a value for safe use inside a SQL single-quoted string literal.
+--- Prevents SQL injection by doubling any embedded single quotes.
+--- @param value string The raw value to escape
+--- @return string The escaped value, safe to interpolate into '...' in SQL
+local function escape_sql_literal(value)
+	if type(value) ~= "string" then
+		return tostring(value)
+	end
+	return (value:gsub("'", "''"))
+end
+
 --- @class DbCliAdapter.AdapterConfig defines the configuration for an individual adapter
 --- @field name string The name of the adapter
 --- @field command string The command to invoke the database CLI
@@ -217,7 +228,7 @@ function AdapterConfig:get_tables_query(schema)
 		vim.notify("Tables query not defined for adapter: " .. self.name, vim.log.levels.WARN)
 		return ""
 	end
-	return string.format(self.tables_query, schema)
+	return string.format(self.tables_query, escape_sql_literal(schema))
 end
 
 --- Returns the query to list fields/columns of a specific table in a specific schema
@@ -229,7 +240,7 @@ function AdapterConfig:get_table_columns_query(table, schema)
 		vim.notify("Table columns query not defined for adapter: " .. self.name, vim.log.levels.WARN)
 		return ""
 	end
-	return string.format(self.table_columns_query, table, schema)
+	return string.format(self.table_columns_query, escape_sql_literal(table), escape_sql_literal(schema))
 end
 
 --- Returns the query string to be executed
