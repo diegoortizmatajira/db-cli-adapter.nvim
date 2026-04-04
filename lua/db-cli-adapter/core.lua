@@ -2,6 +2,8 @@ local config = require("db-cli-adapter.config")
 local M = {
 	--- @type DbCliAdapter.base_params[]|nil
 	_cached_connections = nil,
+	--- @type table<number, fun(connection: string)>
+	_connection_changed_callbacks = {},
 }
 
 --- Retrieves a list of available database connections.
@@ -55,7 +57,8 @@ end
 --- `vim.b.db_cli_adapter_connection_changed`, which can be triggered later when the connection changes.
 --- @param callback fun(connection: string) A function to be called when the connection changes. The function should accept one argument
 function M.set_connection_changed_callback(callback)
-	vim.b.db_cli_adapter_connection_changed = callback
+	local bufnr = vim.api.nvim_get_current_buf()
+	M._connection_changed_callbacks[bufnr] = callback
 end
 
 --- Triggers the callback function for when the database connection changes.
@@ -67,8 +70,10 @@ end
 --- The callback is expected to handle any logic related to connection changes, such as updating
 --- UI components, refreshing data, or re-establishing the connection.
 function M.trigger_connection_changed()
-	if vim.b.db_cli_adapter_connection_changed and type(vim.b.db_cli_adapter_connection_changed) == "function" then
-		vim.b.db_cli_adapter_connection_changed(vim.b.db_cli_adapter_connection)
+	local bufnr = vim.api.nvim_get_current_buf()
+	local cb = M._connection_changed_callbacks[bufnr]
+	if cb then
+		cb(vim.b.db_cli_adapter_connection)
 	end
 	if config.current.connection_change_handler then
 		--- Retrieves the current connection name and adapter for the buffer,
@@ -94,6 +99,7 @@ function M.select_connection(callback)
 	local connection_names = vim.tbl_keys(connections)
 	if #connection_names == 0 then
 		vim.notify("No connections available to select", vim.log.levels.WARN)
+		return
 	end
 	vim.ui.select(connection_names, { prompt = "Select a connection:" }, function(choice)
 		if choice then
