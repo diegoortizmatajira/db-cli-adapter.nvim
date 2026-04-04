@@ -36,22 +36,22 @@ function adapter:query(command, params, opts)
 	if opts and opts.csv_file then
 		-- If CSV output is requested, set the appropriate commands
 		table.insert(args, "-cmd")
-		table.insert(args, '".headers on"')
+		table.insert(args, ".headers on")
 		table.insert(args, "-cmd")
-		table.insert(args, string.format([[".output %s"]], opts.csv_file))
+		table.insert(args, string.format(".output %s", opts.csv_file))
 		table.insert(args, "-cmd")
-		table.insert(args, '".mode csv"')
+		table.insert(args, ".mode csv")
 	else
 		-- Default to table output mode
 		table.insert(args, "-cmd")
-		table.insert(args, '".mode table"')
+		table.insert(args, ".mode table")
 	end
 	if params and params.timeout then
 		table.insert(args, "-cmd")
-		table.insert(args, string.format([[".timeout %s"]], params.timeout * 1000)) -- timeout in milliseconds
+		table.insert(args, string.format(".timeout %s", params.timeout * 1000)) -- timeout in milliseconds
 	end
 	table.insert(args, params.filename)
-	table.insert(args, string.format([["%s"]], self:parse_command(command, params)))
+	table.insert(args, self:parse_command(command, params))
 	local env = {}
 
 	return self:run_command({
