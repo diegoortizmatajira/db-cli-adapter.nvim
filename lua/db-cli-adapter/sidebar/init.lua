@@ -1,5 +1,5 @@
 local core = require("db-cli-adapter.core")
-local config = require("db-cli-adapter.config").current
+local config = require("db-cli-adapter.config")
 local nodes = require("db-cli-adapter.sidebar.nodes")
 
 local Split = require("nui.split")
@@ -74,7 +74,7 @@ local function try_expand_node(node)
 end
 
 function M.init()
-	if not config then
+	if not config.current then
 		vim.notify("DbCliAdapter: Configuration not found.", vim.log.levels.ERROR)
 		return
 	end
@@ -93,12 +93,12 @@ function M.init()
 			line:append(string.rep("  ", node:get_depth() - 1))
 			line:append(
 				node:has_children()
-						and (node:is_expanded() and config.icons.tree.chevron_open or config.icons.tree.chevron_closed)
-					or (node.expandable and config.icons.tree.chevron_closed or "  "),
-				config.highlight.tree.chevron
+						and (node:is_expanded() and config.current.icons.tree.chevron_open or config.current.icons.tree.chevron_closed)
+					or (node.expandable and config.current.icons.tree.chevron_closed or "  "),
+				config.current.highlight.tree.chevron
 			)
 			if node.icon then
-				line:append(node.icon, node.icon_hl or config.highlight.tree.default_icon)
+				line:append(node.icon, node.icon_hl or config.current.highlight.tree.default_icon)
 			end
 			line:append(node.text)
 			if node.count then
@@ -131,7 +131,7 @@ function M.init()
 				M.tree:render()
 			end
 		end)
-	end, config.sidebar.keybindings.toggle_expand)
+	end, config.current.sidebar.keybindings.toggle_expand)
 	-- Map keys for expanding a tree node
 	vim.tbl_map(function(key)
 		M.split:map("n", key, function()
@@ -140,7 +140,7 @@ function M.init()
 				M.tree:render()
 			end
 		end)
-	end, config.sidebar.keybindings.expand)
+	end, config.current.sidebar.keybindings.expand)
 	-- Map keys for collapsing a tree node
 	vim.tbl_map(function(key)
 		M.split:map("n", key, function()
@@ -150,7 +150,7 @@ function M.init()
 				M.tree:render()
 			end
 		end)
-	end, config.sidebar.keybindings.collapse)
+	end, config.current.sidebar.keybindings.collapse)
 	-- Map keys for refreshing the selected node
 	vim.tbl_map(function(key)
 		M.split:map("n", key, function()
@@ -161,19 +161,19 @@ function M.init()
 			end
 			try_refresh(node)
 		end)
-	end, config.sidebar.keybindings.refresh)
+	end, config.current.sidebar.keybindings.refresh)
 	-- Map keys for refreshing the sidebar
 	vim.tbl_map(function(key)
 		M.split:map("n", key, function()
 			M.refresh()
 		end)
-	end, config.sidebar.keybindings.refresh_all)
+	end, config.current.sidebar.keybindings.refresh_all)
 	-- Map keys for quitting the sidebar
 	vim.tbl_map(function(key)
 		M.split:map("n", key, function()
 			M.split:hide()
 		end)
-	end, config.sidebar.keybindings.quit)
+	end, config.current.sidebar.keybindings.quit)
 	-- Hides gutter and number columns
 	vim.opt_local.number = false
 	vim.opt_local.relativenumber = false

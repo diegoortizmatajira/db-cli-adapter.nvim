@@ -1,6 +1,6 @@
 local NuiTree = require("nui.tree")
 local core = require("db-cli-adapter.core")
-local config = require("db-cli-adapter.config").current
+local config = require("db-cli-adapter.config")
 
 local M = {
 	--- @type DbCliAdapter.SidebarNodeData|NuiTree.Node
@@ -53,8 +53,8 @@ end
 function M.newFolderNode(id, text, children, refresh)
 	return M.new_node({
 		id = id,
-		icon = config and config.icons.tree.folder,
-		icon_hl = config and config.highlight.tree.folder,
+		icon = config.current and config.current.icons.tree.folder,
+		icon_hl = config.current and config.current.highlight.tree.folder,
 		text = text,
 		refresh = refresh,
 		expandable = true,
@@ -69,8 +69,8 @@ function M.newTableNode(table_row)
 	local table_name, schema = unpack(table_row)
 	return M.new_node({
 		id = M.get_table_id(schema, table_name),
-		icon = config and config.icons.tree.table,
-		icon_hl = config and config.highlight.tree.table,
+		icon = config.current and config.current.icons.tree.table,
+		icon_hl = config.current and config.current.highlight.tree.table,
 		text = table_name,
 		table_name = table_name,
 		schema = schema,
@@ -103,8 +103,8 @@ end
 function M.newColumnNode(col_definition, parent)
 	local column_name, column_type, is_pk = unpack(col_definition)
 	is_pk = is_pk == "1" or is_pk == "true" or is_pk == "YES"
-	local icon = config and ((is_pk and config.icons.tree.key) or config.icons.tree.column)
-	local icon_hl = config and ((is_pk and config.highlight.tree.key) or config.highlight.tree.column)
+	local icon = config.current and ((is_pk and config.current.icons.tree.key) or config.current.icons.tree.column)
+	local icon_hl = config.current and ((is_pk and config.current.highlight.tree.key) or config.current.highlight.tree.column)
 	local node = M.new_node({
 		id = parent.id .. "_col_" .. column_name,
 		icon = icon,
@@ -124,8 +124,8 @@ function M.newSchemaNode(schema_name)
 	local views_node = M.newFolderNode(id .. "views_node", "Views", {})
 	return M.new_node({
 		id = id,
-		icon = config and config.icons.tree.schema,
-		icon_hl = config and config.highlight.tree.schema,
+		icon = config.current and config.current.icons.tree.schema,
+		icon_hl = config.current and config.current.highlight.tree.schema,
 		text = schema_name,
 		tables_node = tables_node,
 		views_node = views_node,
@@ -159,8 +159,8 @@ end
 function M.newDatabaseNode(text)
 	return M.new_node({
 		id = "database_node",
-		icon = config and config.icons.tree.database or "",
-		icon_hl = config and config.highlight.tree.database or "",
+		icon = config.current and config.current.icons.tree.database or "",
+		icon_hl = config.current and config.current.highlight.tree.database or "",
 		text = text,
 		refresh = function(self, tree, adapter)
 			core.run(adapter:get_schemas_query(), {
