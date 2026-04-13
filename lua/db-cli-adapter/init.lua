@@ -132,14 +132,31 @@ function M.run_at_cursor(csv, opts)
 	local command = get_visual_selection()
 	if command == "" then
 		command = get_statement_at_cursor()
-		if command == "" then
-			vim.notify("No text selected", vim.log.levels.WARN)
-			return
-		end
 	end
-	-- Execute the command or pass it to the database CLI
+	M.run_with_buffer_connection(command, csv, opts)
+end
+
+--- Executes a SQL command with the current buffer connection and optional configurations.
+---
+--- This function enables executing SQL commands using the current buffer's database connection.
+--- The SQL command can be passed as a string in the `command` argument. Behavior can be customized
+--- through the `csv` flag and the `opts` parameter.
+---
+--- - If the `csv` flag is true, results will be formatted as CSV using the configured output handler.
+--- - Optional execution parameters in `opts` allow specifying additional settings, such as the database
+--- connection or other execution preferences.
+---
+--- @param command string The SQL command to execute. If empty, the function ends without execution.
+--- @param csv boolean|nil If true, output is formatted as CSV.
+--- @param opts table|nil Configuration options for execution:
+---   - connection (string|nil): Specifies the database connection to use.
+function M.run_with_buffer_connection(command, csv, opts)
+	if command == "" then
+		vim.notify("No sql command was provided", vim.log.levels.WARN)
+		return
+	end
 	if csv then
-		opts = output.set_csv_output_handler()
+		opts = output.set_csv_output_handler(opts)
 	end
 	core.run(command, opts)
 end
