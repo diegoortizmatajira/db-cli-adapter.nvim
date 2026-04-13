@@ -99,8 +99,13 @@ local function lsp_restart(server_name, settings)
 	if #clients == 0 then
 		return
 	end
-	vim.lsp.stop_client(clients, true)
+	for _, client in ipairs(clients) do
+		client:stop(true)
+	end
 	local lsp_config = vim.lsp.config[server_name]
+	if not lsp_config then
+		return
+	end
 	-- Reconfigure and restart the LSP with the new connection settings
 	lsp_config.settings = settings
 	vim.lsp.start(lsp_config)
