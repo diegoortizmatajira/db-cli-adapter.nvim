@@ -53,6 +53,10 @@ end
 --- @param csv_file string The path to the CSV file to display
 function M.show_csv_output(csv_file)
 	local config = require("db-cli-adapter.config").current
+	if vim.fn.filereadable(csv_file) == 0 then
+		vim.notify("DbCliAdapter: CSV output file not found: " .. csv_file, vim.log.levels.ERROR)
+		return
+	end
 	M.show()
 	vim.api.nvim_buf_call(M.split.bufnr, function()
 		-- Set the buffer to be modifiable

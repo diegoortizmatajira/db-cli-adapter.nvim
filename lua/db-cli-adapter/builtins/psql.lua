@@ -47,7 +47,7 @@ function adapter:query(command, params, opts)
 	if opts and opts.csv_file then
 		-- If CSV output is requested, set the appropriate commands
 		table.insert(args, "--csv")
-		table.insert(args, string.format([[--output='%s']], opts.csv_file))
+		table.insert(args, string.format("--output=%s", opts.csv_file))
 	else
 		-- Default to table output mode
 		table.insert(args, "-P")
