@@ -58,6 +58,31 @@ describe("mutation_sql", function()
 		assert.are.equal("INSERT INTO `users` (`id`, `name`) VALUES (x'1', x'alice');", statements[1])
 	end)
 
+	it("supports adapter methods declared with colon syntax", function()
+		local changes = {
+			inserts = {
+				{ row = { id = "1", name = "alice" } },
+			},
+			updates = {},
+			deletes = {},
+		}
+		local table_meta = {
+			table = "users",
+			columns = { "id", "name" },
+			pk_columns = { "id" },
+		}
+		local adapter = {}
+		function adapter:quote_identifier(identifier)
+			return "[" .. identifier .. "]"
+		end
+		function adapter:format_literal(value)
+			return "n'" .. tostring(value) .. "'"
+		end
+
+		local statements = mutation_sql.generate(changes, table_meta, adapter)
+		assert.are.equal("INSERT INTO [users] ([id], [name]) VALUES (n'1', n'alice');", statements[1])
+	end)
+
 	it("does not generate update statement when only PK columns are listed as changed", function()
 		local changes = {
 			inserts = {},

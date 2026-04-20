@@ -11,6 +11,28 @@ local function default_format_literal(value)
 	return string.format("'%s'", tostring(value):gsub("'", "''"))
 end
 
+local function invoke_adapter_function(fn, adapter, value, fallback)
+	local info = debug and debug.getinfo and debug.getinfo(fn, "u") or nil
+	local prefer_value_only = info and info.nparams and info.nparams <= 1
+	if prefer_value_only then
+		local ok, out = pcall(fn, value)
+		if ok then
+			return out
+		end
+	end
+
+	local ok, out = pcall(fn, adapter, value)
+	if ok then
+		return out
+	end
+
+	local ok_fallback, fallback_out = pcall(fn, value)
+	if ok_fallback then
+		return fallback_out
+	end
+	return fallback(value)
+end
+
 local function table_fqn(table_meta, quote_identifier)
 	if table_meta.schema and table_meta.schema ~= "" then
 		return quote_identifier(table_meta.schema) .. "." .. quote_identifier(table_meta.table)
@@ -37,8 +59,18 @@ end
 --- @param adapter DbCliAdapter.AdapterConfig
 --- @return string[] statements
 function M.generate(changes, table_meta, adapter)
-	local quote_identifier = adapter and adapter.quote_identifier or default_quote_identifier
-	local format_literal = adapter and adapter.format_literal or default_format_literal
+	local quote_identifier = default_quote_identifier
+	local format_literal = default_format_literal
+	if adapter and adapter.quote_identifier then
+		quote_identifier = function(identifier)
+			return invoke_adapter_function(adapter.quote_identifier, adapter, identifier, default_quote_identifier)
+		end
+	end
+	if adapter and adapter.format_literal then
+		format_literal = function(value)
+			return invoke_adapter_function(adapter.format_literal, adapter, value, default_format_literal)
+		end
+	end
 	local fqn = table_fqn(table_meta, quote_identifier)
 	local pk_columns = table_meta.pk_columns or {}
 
