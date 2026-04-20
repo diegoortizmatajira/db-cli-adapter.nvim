@@ -28,6 +28,19 @@ function M.setup(opts)
 		M.run_at_cursor(true)
 	end, { range = true, nargs = 0 })
 	vim.api.nvim_create_user_command("DbCliRunBuffer", M.run_buffer, { nargs = 0 })
+	vim.api.nvim_create_user_command("DbCliRunAtCursorEditable", function()
+		M.run_at_cursor_editable()
+	end, { range = true, nargs = 0 })
+	vim.api.nvim_create_user_command("DbCliRunBufferEditable", M.run_buffer_editable, { nargs = 0 })
+	vim.api.nvim_create_user_command("DbCliResultPreviewChanges", function()
+		require("db-cli-adapter.result_buffer").preview_changes()
+	end, { nargs = 0 })
+	vim.api.nvim_create_user_command("DbCliResultCommitChanges", function()
+		require("db-cli-adapter.result_buffer").commit_changes()
+	end, { nargs = 0 })
+	vim.api.nvim_create_user_command("DbCliResultRefresh", function()
+		require("db-cli-adapter.result_buffer").refresh()
+	end, { nargs = 0 })
 	vim.api.nvim_create_user_command("DbCliSelectConnection", M.select_connection, { nargs = 0 })
 	vim.api.nvim_create_user_command("DbCliSidebarToggle", M.toggle_sidebar, { nargs = 0 })
 	vim.api.nvim_create_user_command("DbCliOutputToggle", M.toggle_output, { nargs = 0 })
@@ -155,8 +168,15 @@ function M.run_with_buffer_connection(command, csv, opts)
 		vim.notify("No sql command was provided", vim.log.levels.WARN)
 		return
 	end
+	opts = opts or {}
 	if csv then
 		opts = output.set_csv_output_handler(opts)
+	end
+	if opts.editable then
+		local result_buffer = require("db-cli-adapter.result_buffer")
+		opts.callback = function(result, context)
+			result_buffer.open_from_result(result, context)
+		end
 	end
 	core.run(command, opts)
 end
@@ -178,7 +198,24 @@ end
 function M.run_buffer(bufnr, opts)
 	bufnr = bufnr or vim.api.nvim_get_current_buf()
 	local all_text = table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), "\n")
+	opts = opts or {}
+	if opts.editable then
+		local result_buffer = require("db-cli-adapter.result_buffer")
+		opts.callback = function(result, context)
+			result_buffer.open_from_result(result, context)
+		end
+	end
 	core.run(all_text, opts)
+end
+
+--- Executes query at cursor and opens editable result buffer when possible.
+function M.run_at_cursor_editable()
+	M.run_at_cursor(false, { editable = true })
+end
+
+--- Executes full buffer query and opens editable result buffer when possible.
+function M.run_buffer_editable()
+	M.run_buffer(vim.api.nvim_get_current_buf(), { editable = true })
 end
 
 --- Opens the source file for editing connections associated with the given key.

@@ -86,4 +86,36 @@ function adapter:get_url_connection(params)
 	})
 end
 
+--- @param identifier string
+--- @return string
+function adapter:quote_identifier(identifier)
+	return string.format("`%s`", tostring(identifier):gsub("`", "``"))
+end
+
+--- Returns query to list PK columns for MySQL tables.
+--- @param schema string|nil
+--- @param table_name string
+--- @return string
+function adapter:get_primary_keys_query(schema, table_name)
+	if not table_name or table_name == "" then
+		return ""
+	end
+	local schema_filter = schema and schema ~= ""
+			and string.format("kcu.table_schema = '%s'", tostring(schema):gsub("'", "''"))
+		or "kcu.table_schema = DATABASE()"
+	return string.format(
+		[[SELECT kcu.column_name
+FROM information_schema.table_constraints tc
+JOIN information_schema.key_column_usage kcu
+	ON tc.constraint_name = kcu.constraint_name
+	AND tc.table_schema = kcu.table_schema
+WHERE tc.constraint_type = 'PRIMARY KEY'
+	AND kcu.table_name = '%s'
+	AND %s
+ORDER BY kcu.ordinal_position;]],
+		tostring(table_name):gsub("'", "''"),
+		schema_filter
+	)
+end
+
 return adapter

@@ -179,6 +179,11 @@ A `sqls_connection_change_handler` is also available for
 | `:DbCliRunAtCursor`           | Run the visual selection or TreeSitter statement at the cursor |
 | `:DbCliRunAtCursorCsv`        | Same as above but output as CSV                       |
 | `:DbCliRunBuffer`             | Run the entire buffer as a query                      |
+| `:DbCliRunAtCursorEditable`   | Run query at cursor and open editable result buffer when PK columns are present |
+| `:DbCliRunBufferEditable`     | Run full buffer query and open editable result buffer when PK columns are present |
+| `:DbCliResultPreviewChanges`  | Preview generated `INSERT`/`UPDATE`/`DELETE` statements from result buffer edits |
+| `:DbCliResultCommitChanges`   | Commit pending result-buffer changes to the same connection |
+| `:DbCliResultRefresh`         | Re-run the original query for the current result buffer |
 | `:DbCliSidebarToggle`         | Toggle the database browser sidebar                   |
 | `:DbCliOutputToggle`          | Toggle the output panel                               |
 | `:DbCliEditConnection [key]`  | Edit a connection source file (`global` or `workspace`) |
@@ -264,6 +269,25 @@ require('db-cli-adapter').get_current_db_connection()
 
 This returns a string like `"󰪩 my_postgres"` when a connection is active, or
 an empty string otherwise.
+
+### Editable result buffers
+
+Use `:DbCliRunAtCursorEditable` or `:DbCliRunBufferEditable` to open query results in an editable buffer.
+
+Current V1 constraints:
+
+- only single-table `SELECT` results are editable
+- primary key columns must be part of the selected columns
+- if a result set is not eligible, it opens in read-only mode with a warning
+
+Inside an editable result buffer:
+
+- modify cell values directly
+- remove lines to mark rows for deletion
+- add new lines for inserts (with PK values)
+- run `:DbCliResultPreviewChanges` to inspect generated SQL
+- run `:DbCliResultCommitChanges` to apply changes
+- run `:DbCliResultRefresh` to reload from source query
 
 ### Health check
 

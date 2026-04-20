@@ -64,6 +64,7 @@
 --- @field timeout? number Timeout in seconds for the query execution
 --- @field callback? fun(output: DbCliAdapter.Output) Optional callback function to handle the
 --- @field csv_file? string If provided, the query output will be saved to this CSV file
+--- @field editable? boolean If true, attempts to open query results in editable result-buffer mode
 
 --- @class DbCliAdapter.CsvOutputConfig defines parameters for CSV output configuration
 --- @field after_query_callback? fun(bufnr: number, file_path: string) Optional callback function to handle the

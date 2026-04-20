@@ -146,6 +146,21 @@ local function _run(query, opts)
 		vim.notify("Adapter not found: " .. tostring(connection.adapter), vim.log.levels.ERROR)
 		return
 	end
+	if opts.callback then
+		local callback = opts.callback
+		local context = {
+			query = query,
+			connection_name = opts.connection,
+			connection = connection,
+			adapter = adapter,
+			adapter_name = connection.adapter,
+		}
+		opts = vim.tbl_extend("force", opts, {
+			callback = function(result)
+				callback(result, context)
+			end,
+		})
+	end
 	adapter:query(query, connection, opts)
 end
 

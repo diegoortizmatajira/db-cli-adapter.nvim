@@ -67,6 +67,23 @@ function adapter:get_table_columns_query(schema, table_name)
 	return string.format(self.table_columns_query, table_name)
 end
 
+--- Returns query to list PK columns for SQLite tables.
+--- @param _ string|nil
+--- @param table_name string
+--- @return string
+function adapter:get_primary_keys_query(_, table_name)
+	if not table_name or table_name == "" then
+		return ""
+	end
+	return string.format(
+		[[SELECT name AS column_name
+FROM pragma_table_info('%s')
+WHERE pk > 0
+ORDER BY pk;]],
+		tostring(table_name):gsub("'", "''")
+	)
+end
+
 --- Return the connection URL for the adapter
 --- @param params DbCliAdapter.sqlite_params Connection parameters
 --- @return DbCliAdapter.ConnectionChangedData

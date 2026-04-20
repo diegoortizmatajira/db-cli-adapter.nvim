@@ -258,6 +258,50 @@ function AdapterConfig:get_table_columns_query(schema, table)
 	return string.format(self.table_columns_query, escape_sql_literal(schema), escape_sql_literal(table))
 end
 
+--- Returns a query to list primary key columns for a table.
+--- @param schema string|nil The schema name where the table resides
+--- @param table_name string The table name
+--- @return string result The query string
+function AdapterConfig:get_primary_keys_query(schema, table_name)
+	if not table_name or table_name == "" then
+		return ""
+	end
+	local filters = {
+		"tc.constraint_type = 'PRIMARY KEY'",
+		string.format("kcu.table_name = '%s'", escape_sql_literal(table_name)),
+	}
+	if schema and schema ~= "" then
+		table.insert(filters, string.format("kcu.table_schema = '%s'", escape_sql_literal(schema)))
+	end
+	return string.format(
+		[[SELECT kcu.column_name
+FROM information_schema.table_constraints tc
+JOIN information_schema.key_column_usage kcu
+	ON tc.constraint_name = kcu.constraint_name
+	AND tc.table_schema = kcu.table_schema
+WHERE %s
+ORDER BY kcu.ordinal_position;]],
+		table.concat(filters, " AND ")
+	)
+end
+
+--- Quotes an identifier for SQL statements.
+--- @param identifier string
+--- @return string
+function AdapterConfig:quote_identifier(identifier)
+	return string.format('"%s"', tostring(identifier):gsub('"', '""'))
+end
+
+--- Formats a value as an SQL literal.
+--- @param value any
+--- @return string
+function AdapterConfig:format_literal(value)
+	if value == nil then
+		return "NULL"
+	end
+	return string.format("'%s'", escape_sql_literal(tostring(value)))
+end
+
 --- Returns the query string to be executed
 --- @param command string|fun(connection:DbCliAdapter.base_params): string The command string or a function that returns the command string
 --- @param connection DbCliAdapter.base_params The connection parameters
