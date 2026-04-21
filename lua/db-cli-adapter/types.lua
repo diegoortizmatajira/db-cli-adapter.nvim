@@ -62,7 +62,7 @@
 --- @class DbCliAdapter.RunOptions defines parameters for running a query
 --- @field connection? string The name of the connection to use. If not provided, the buffer-local connection will be used.
 --- @field timeout? number Timeout in seconds for the query execution
---- @field callback? fun(output: DbCliAdapter.Output) Optional callback function to handle the
+--- @field callback? fun(output: DbCliAdapter.Output, context?: table) Optional callback function to handle the
 --- @field csv_file? string If provided, the query output will be saved to this CSV file
 --- @field editable? boolean If true, attempts to open query results in editable result-buffer mode
 

@@ -161,7 +161,7 @@ end
 ---
 --- @param command string The SQL command to execute. If empty, the function ends without execution.
 --- @param csv boolean|nil If true, output is formatted as CSV.
---- @param opts table|nil Configuration options for execution:
+--- @param opts DbCliAdapter.RunOptions|nil Configuration options for execution:
 ---   - connection (string|nil): Specifies the database connection to use.
 function M.run_with_buffer_connection(command, csv, opts)
 	if command == "" then
@@ -169,14 +169,13 @@ function M.run_with_buffer_connection(command, csv, opts)
 		return
 	end
 	opts = opts or {}
-	if csv then
-		opts = output.set_csv_output_handler(opts)
-	end
 	if opts.editable then
 		local result_buffer = require("db-cli-adapter.output.result_buffer")
 		opts.callback = function(result, context)
 			result_buffer.open_from_result(result, context)
 		end
+	elseif csv then
+		opts = output.set_csv_output_handler(opts)
 	end
 	core.run(command, opts)
 end
