@@ -1,7 +1,7 @@
 local core = require("db-cli-adapter.core")
 local config = require("db-cli-adapter.config")
-local result_diff = require("db-cli-adapter.result_diff")
-local mutation_sql = require("db-cli-adapter.mutation_sql")
+local result_diff = require("db-cli-adapter.output.result_diff")
+local mutation_sql = require("db-cli-adapter.output.mutation_sql")
 
 local M = {}
 

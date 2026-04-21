@@ -1,4 +1,4 @@
-local mutation_sql = require("db-cli-adapter.mutation_sql")
+local mutation_sql = require("db-cli-adapter.output.mutation_sql")
 
 describe("mutation_sql", function()
 	it("generates insert, update and delete statements", function()

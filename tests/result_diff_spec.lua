@@ -1,4 +1,4 @@
-local result_diff = require("db-cli-adapter.result_diff")
+local result_diff = require("db-cli-adapter.output.result_diff")
 
 describe("result_diff", function()
 	it("detects inserts, updates and deletes", function()

@@ -1,4 +1,4 @@
-local result_buffer = require("db-cli-adapter.result_buffer")
+local result_buffer = require("db-cli-adapter.output.result_buffer")
 local config_mod = require("db-cli-adapter.config")
 local core = require("db-cli-adapter.core")
 
