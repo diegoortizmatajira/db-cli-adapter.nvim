@@ -126,12 +126,29 @@ local function open_or_reuse_buffer(target_bufnr)
 	if target_bufnr and vim.api.nvim_buf_is_valid(target_bufnr) then
 		return target_bufnr
 	end
+	local has_output, output_panel = pcall(require, "db-cli-adapter.output")
+	if has_output and output_panel and type(output_panel.show) == "function" then
+		local shown = pcall(output_panel.show)
+		if not shown then
+			output_panel.split = nil
+			pcall(output_panel.show)
+		end
+		if output_panel.split and output_panel.split.bufnr and vim.api.nvim_buf_is_valid(output_panel.split.bufnr) then
+			if output_panel.split.winid and vim.api.nvim_win_is_valid(output_panel.split.winid) then
+				vim.api.nvim_set_current_win(output_panel.split.winid)
+			end
+			return output_panel.split.bufnr
+		end
+	end
 	vim.cmd("botright new")
 	local bufnr = vim.api.nvim_get_current_buf()
 	return bufnr
 end
 
 local function render_result_buffer(bufnr, columns, rows, format)
+	vim.b[bufnr].db_cli_result_readonly_reason = nil
+	vim.bo[bufnr].readonly = false
+	vim.bo[bufnr].modifiable = true
 	local lines = { to_delimited_line(columns, format) }
 	for _, row in ipairs(rows or {}) do
 		local values = {}
@@ -144,9 +161,7 @@ local function render_result_buffer(bufnr, columns, rows, format)
 	vim.bo[bufnr].buftype = "nofile"
 	vim.bo[bufnr].bufhidden = "hide"
 	vim.bo[bufnr].swapfile = false
-	vim.bo[bufnr].filetype = format == "csv" and "csv" or "db-cli-result"
-	vim.bo[bufnr].readonly = false
-	vim.bo[bufnr].modifiable = true
+	vim.bo[bufnr].filetype = format == "csv" and "db-cli-output.csv" or "db-cli-result"
 	vim.schedule(function()
 		if not vim.api.nvim_buf_is_valid(bufnr) then
 			return

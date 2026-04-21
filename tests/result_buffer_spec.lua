@@ -6,10 +6,16 @@ describe("result_buffer", function()
 	local bufnr
 	local previous_config
 	local previous_core_run
+	local previous_output_module
 
 	before_each(function()
 		previous_config = config_mod.current
 		previous_core_run = core.run
+		previous_output_module = package.loaded["db-cli-adapter.output"]
+		package.loaded["db-cli-adapter.output"] = {
+			split = nil,
+			show = function() end,
+		}
 		config_mod.current = vim.tbl_deep_extend("force", config_mod.default, {})
 		config_mod.current.output.editable.format = "tsv"
 		bufnr = vim.api.nvim_create_buf(false, true)
@@ -22,6 +28,7 @@ describe("result_buffer", function()
 		end
 		config_mod.current = previous_config
 		core.run = previous_core_run
+		package.loaded["db-cli-adapter.output"] = previous_output_module
 	end)
 
 	it("computes inserts updates and deletes from editable buffer", function()
@@ -163,7 +170,7 @@ describe("result_buffer", function()
 
 		result_buffer.open_from_result(result, context)
 		local new_bufnr = vim.api.nvim_get_current_buf()
-		assert.are.equal("csv", vim.bo[new_bufnr].filetype)
+		assert.are.equal("db-cli-output.csv", vim.bo[new_bufnr].filetype)
 		assert.are.same({ "id,name", '1,"Alice, Sr."' }, vim.api.nvim_buf_get_lines(new_bufnr, 0, -1, false))
 
 		if vim.api.nvim_buf_is_valid(new_bufnr) then
@@ -206,7 +213,7 @@ describe("result_buffer", function()
 		result_buffer.open_from_result(result, context)
 		vim.wait(50)
 		local new_bufnr = vim.api.nvim_get_current_buf()
-		assert.are.equal("csv", vim.bo[new_bufnr].filetype)
+		assert.are.equal("db-cli-output.csv", vim.bo[new_bufnr].filetype)
 		assert.is_true(vim.bo[new_bufnr].modifiable)
 		assert.is_false(vim.bo[new_bufnr].readonly)
 
