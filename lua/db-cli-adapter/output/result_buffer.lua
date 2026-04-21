@@ -72,7 +72,7 @@ local function to_delimited_value(value, format)
 	if format ~= "csv" then
 		return value
 	end
-	if value:find("[,\"\r\n]") then
+	if value:find('[,"\r\n]') then
 		return '"' .. value:gsub('"', '""') .. '"'
 	end
 	return value
@@ -107,11 +107,11 @@ local function parse_query_target(query)
 	if lowered:find(" join ", 1, true) or lowered:find(" union ", 1, true) then
 		return nil, "Editable mode currently supports single-table SELECT statements without JOIN/UNION"
 	end
-	local table_ref = query:match("[Ff][Rr][Oo][Mm]%s+([%w_%.\"`]+)")
+	local table_ref = query:match('[Ff][Rr][Oo][Mm]%s+([%w_%."`]+)')
 	if not table_ref or table_ref == "" or table_ref:find("%(") then
 		return nil, "Could not determine target table from query"
 	end
-	table_ref = table_ref:gsub("[\"`]", "")
+	table_ref = table_ref:gsub('["`]', "")
 	local parts = vim.split(table_ref, ".", { plain = true, trimempty = true })
 	if #parts == 1 then
 		return { schema = nil, table = parts[1] }, nil
@@ -188,7 +188,7 @@ local function get_state(bufnr)
 	end
 	local state = vim.b[bufnr].db_cli_result_state
 	if not state then
-		return nil, "Current buffer is not a db-cli-adapter result buffer"
+		return nil, "Current buffer is not enabled for editing results"
 	end
 	return state, nil
 end
@@ -331,7 +331,9 @@ function M.open_from_result(result, context, opts)
 	end
 
 	local adapter = context.adapter
-	local pk_query = adapter and adapter.get_primary_keys_query and adapter:get_primary_keys_query(table_meta.schema, table_meta.table)
+	local pk_query = adapter
+		and adapter.get_primary_keys_query
+		and adapter:get_primary_keys_query(table_meta.schema, table_meta.table)
 	if not pk_query or pk_query == "" then
 		open_result(result, context, table_meta, {}, {
 			target_bufnr = opts.target_bufnr,
