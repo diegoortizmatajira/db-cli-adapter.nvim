@@ -4,6 +4,14 @@ local M = {
 	split = nil,
 }
 
+local function has_valid_buffer(split)
+	return split and split.bufnr and vim.api.nvim_buf_is_valid(split.bufnr)
+end
+
+local function has_valid_window(split)
+	return split and split.winid and vim.api.nvim_win_is_valid(split.winid)
+end
+
 function M.init()
 	local config = require("db-cli-adapter.config").current
 	if not config then
@@ -31,15 +39,23 @@ function M.toggle()
 end
 
 function M.show()
-	if M.split then
+	if has_valid_window(M.split) then
 		M.split:show()
-	else
-		M.init()
+		return
 	end
+	if M.split and M.split.unmount then
+		pcall(function()
+			M.split:unmount()
+		end)
+	end
+	if not has_valid_buffer(M.split) then
+		M.split = nil
+	end
+	M.init()
 end
 
 function M.hide()
-	if M.split and M.split.winid and vim.api.nvim_win_is_valid(M.split.winid) then
+	if has_valid_window(M.split) then
 		M.split:hide()
 		return true
 	end

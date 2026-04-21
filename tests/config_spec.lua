@@ -38,6 +38,11 @@ describe("config", function()
 		it("has highlight configurations", function()
 			assert.is_table(config.default.highlight.tree)
 		end)
+
+		it("has editable output format configuration", function()
+			assert.is_table(config.default.output.editable)
+			assert.are.equal("csv", config.default.output.editable.format)
+		end)
 	end)
 
 	describe("update", function()
