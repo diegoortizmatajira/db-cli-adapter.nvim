@@ -76,6 +76,9 @@ local C = {
 			csv = {
 				after_query_callback = nil,
 			},
+			editable = {
+				format = "csv",
+			},
 		},
 	},
 	--- @type DbCliAdapter.Config|nil

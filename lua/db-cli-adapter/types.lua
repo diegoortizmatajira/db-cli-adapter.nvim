@@ -69,8 +69,12 @@
 --- @class DbCliAdapter.CsvOutputConfig defines parameters for CSV output configuration
 --- @field after_query_callback? fun(bufnr: number, file_path: string) Optional callback function to handle the
 
+--- @class DbCliAdapter.EditableOutputConfig defines parameters for editable result buffer output
+--- @field format? string Delimiter format for editable result buffers: "tsv" (default) or "csv"
+
 --- @class DbCliAdapter.OutputConfig defines parameters for output configuration
 --- @field csv DbCliAdapter.CsvOutputConfig Configuration for CSV output
+--- @field editable DbCliAdapter.EditableOutputConfig Configuration for editable result output
 
 --- @class DbCliAdapter.ConnectionChangedData
 --- @field name string The name of the new connection

@@ -111,6 +111,9 @@ require('db-cli-adapter').setup({
         csv = {
             after_query_callback = nil, -- function(csv_file_path) called after CSV export
         },
+        editable = {
+            format = 'csv', -- 'csv' (default) or 'tsv' for editable result buffers
+        },
     },
 
     -- Icons used in the sidebar and connection picker
@@ -273,6 +276,18 @@ an empty string otherwise.
 ### Editable result buffers
 
 Use `:DbCliRunAtCursorEditable` or `:DbCliRunBufferEditable` to open query results in an editable buffer.
+
+Editable buffer format is configurable:
+
+```lua
+require('db-cli-adapter').setup({
+    output = {
+        editable = {
+            format = 'csv', -- or 'tsv'
+        },
+    },
+})
+```
 
 Current V1 constraints:
 

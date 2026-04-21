@@ -5,8 +5,86 @@ local mutation_sql = require("db-cli-adapter.mutation_sql")
 
 local M = {}
 
-local function split_tab_line(line)
+local function get_editable_format()
+	local output = config.current and config.current.output or {}
+	local editable = output and output.editable or {}
+	local format = editable and editable.format or "csv"
+	if format ~= "csv" and format ~= "tsv" then
+		return "csv"
+	end
+	return format
+end
+
+local function split_tsv_line(line)
 	return vim.split(line, "\t", { plain = true, trimempty = false })
+end
+
+local function split_csv_line(line)
+	local values = {}
+	local current = ""
+	local in_quotes = false
+	local i = 1
+	while i <= #line do
+		local char = line:sub(i, i)
+		if in_quotes then
+			if char == '"' then
+				local next_char = line:sub(i + 1, i + 1)
+				if next_char == '"' then
+					current = current .. '"'
+					i = i + 1
+				else
+					in_quotes = false
+				end
+			else
+				current = current .. char
+			end
+		else
+			if char == "," then
+				table.insert(values, current)
+				current = ""
+			elseif char == '"' then
+				in_quotes = true
+			else
+				current = current .. char
+			end
+		end
+		i = i + 1
+	end
+	if in_quotes then
+		return nil, "Unterminated quoted CSV field"
+	end
+	table.insert(values, current)
+	return values, nil
+end
+
+local function split_line(line, format)
+	if format == "csv" then
+		return split_csv_line(line)
+	end
+	return split_tsv_line(line), nil
+end
+
+local function to_delimited_value(value, format)
+	if value == nil then
+		value = ""
+	end
+	value = tostring(value)
+	if format ~= "csv" then
+		return value
+	end
+	if value:find("[,\"\r\n]") then
+		return '"' .. value:gsub('"', '""') .. '"'
+	end
+	return value
+end
+
+local function to_delimited_line(values, format)
+	local delimiter = format == "csv" and "," or "\t"
+	local encoded = {}
+	for i, value in ipairs(values) do
+		encoded[i] = to_delimited_value(value, format)
+	end
+	return table.concat(encoded, delimiter)
 end
 
 local function to_row_maps(columns, rows)
@@ -53,22 +131,32 @@ local function open_or_reuse_buffer(target_bufnr)
 	return bufnr
 end
 
-local function render_result_buffer(bufnr, columns, rows)
-	local lines = { table.concat(columns, "\t") }
+local function render_result_buffer(bufnr, columns, rows, format)
+	local lines = { to_delimited_line(columns, format) }
 	for _, row in ipairs(rows or {}) do
 		local values = {}
 		for i = 1, #columns do
 			table.insert(values, row[i] or "")
 		end
-		table.insert(lines, table.concat(values, "\t"))
+		table.insert(lines, to_delimited_line(values, format))
 	end
 	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-	vim.bo[bufnr].modifiable = true
-	vim.bo[bufnr].readonly = false
 	vim.bo[bufnr].buftype = "nofile"
 	vim.bo[bufnr].bufhidden = "hide"
 	vim.bo[bufnr].swapfile = false
-	vim.bo[bufnr].filetype = "db-cli-result"
+	vim.bo[bufnr].filetype = format == "csv" and "csv" or "db-cli-result"
+	vim.bo[bufnr].readonly = false
+	vim.bo[bufnr].modifiable = true
+	vim.schedule(function()
+		if not vim.api.nvim_buf_is_valid(bufnr) then
+			return
+		end
+		if vim.b[bufnr].db_cli_result_readonly_reason then
+			return
+		end
+		vim.bo[bufnr].readonly = false
+		vim.bo[bufnr].modifiable = true
+	end)
 end
 
 local function render_readonly_result(bufnr, readonly_reason)
@@ -97,12 +185,15 @@ local function get_adapter_for_state(state)
 	return config.current and config.current.adapters[state.adapter_name] or nil
 end
 
-local function parse_current_rows(bufnr, columns)
+local function parse_current_rows(bufnr, columns, format)
 	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 	if #lines == 0 then
 		return nil, "Result buffer is empty"
 	end
-	local current_header = split_tab_line(lines[1])
+	local current_header, header_err = split_line(lines[1], format)
+	if header_err then
+		return nil, string.format("Could not parse header: %s", header_err)
+	end
 	if #current_header ~= #columns then
 		return nil, "Header columns cannot be changed in editable result buffer"
 	end
@@ -116,7 +207,10 @@ local function parse_current_rows(bufnr, columns)
 	for i = 2, #lines do
 		local line = lines[i]
 		if line ~= "" then
-			local values = split_tab_line(line)
+			local values, split_err = split_line(line, format)
+			if split_err then
+				return nil, string.format("Line %d parse error: %s", i, split_err)
+			end
 			if #values ~= #columns then
 				return nil, string.format("Line %d has %d values; expected %d", i, #values, #columns)
 			end
@@ -132,7 +226,7 @@ local function parse_current_rows(bufnr, columns)
 end
 
 local function generate_changes_and_sql(state, bufnr)
-	local current_rows, parse_err = parse_current_rows(bufnr, state.columns)
+	local current_rows, parse_err = parse_current_rows(bufnr, state.columns, state.format or get_editable_format())
 	if parse_err then
 		return nil, nil, parse_err
 	end
@@ -169,10 +263,11 @@ local function set_result_state(bufnr, state)
 end
 
 local function open_result(result, context, table_meta, pk_columns, opts)
+	local format = opts.format or get_editable_format()
 	local columns = (result.data and result.data.column_names) or {}
 	local rows = (result.data and result.data.rows) or {}
 	local bufnr = open_or_reuse_buffer(opts.target_bufnr)
-	render_result_buffer(bufnr, columns, rows)
+	render_result_buffer(bufnr, columns, rows, format)
 
 	local state = {
 		query = context.query,
@@ -183,6 +278,7 @@ local function open_result(result, context, table_meta, pk_columns, opts)
 		columns = columns,
 		pk_columns = pk_columns or {},
 		original_rows = to_row_maps(columns, rows),
+		format = format,
 		editable = #pk_columns > 0,
 	}
 	set_result_state(bufnr, state)
@@ -199,6 +295,7 @@ end
 --- @param opts? table
 function M.open_from_result(result, context, opts)
 	opts = opts or {}
+	local format = opts.format or get_editable_format()
 	if not result or not result.data or not result.data.column_names then
 		vim.notify("No tabular result data available to open in editable mode", vim.log.levels.WARN)
 		return
@@ -212,6 +309,7 @@ function M.open_from_result(result, context, opts)
 	if query_err then
 		open_result(result, context, nil, {}, {
 			target_bufnr = opts.target_bufnr,
+			format = format,
 			readonly_reason = query_err,
 		})
 		return
@@ -222,6 +320,7 @@ function M.open_from_result(result, context, opts)
 	if not pk_query or pk_query == "" then
 		open_result(result, context, table_meta, {}, {
 			target_bufnr = opts.target_bufnr,
+			format = format,
 			readonly_reason = "Adapter could not resolve primary keys for this table",
 		})
 		return
@@ -239,6 +338,7 @@ function M.open_from_result(result, context, opts)
 			if #pk_columns == 0 then
 				open_result(result, context, table_meta, {}, {
 					target_bufnr = opts.target_bufnr,
+					format = format,
 					readonly_reason = "No primary key columns found for target table",
 				})
 				return
@@ -248,6 +348,7 @@ function M.open_from_result(result, context, opts)
 				if not vim.tbl_contains(result_columns, pk) then
 					open_result(result, context, table_meta, {}, {
 						target_bufnr = opts.target_bufnr,
+						format = format,
 						readonly_reason = string.format("Result does not include PK column '%s'", pk),
 					})
 					return
@@ -255,6 +356,7 @@ function M.open_from_result(result, context, opts)
 			end
 			open_result(result, context, table_meta, pk_columns, {
 				target_bufnr = opts.target_bufnr,
+				format = format,
 			})
 		end,
 	})
@@ -350,7 +452,7 @@ function M.refresh(bufnr)
 	core.run(state.query, {
 		connection = state.connection,
 		callback = function(result, context)
-			M.open_from_result(result, context, { target_bufnr = bufnr })
+			M.open_from_result(result, context, { target_bufnr = bufnr, format = state.format })
 		end,
 	})
 end
