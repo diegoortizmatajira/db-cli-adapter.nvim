@@ -76,4 +76,34 @@ describe("result_buffer", function()
 		assert.is_nil(changes)
 		assert.are.equal("readonly test reason", err)
 	end)
+
+	it("opens editable results in a new buffer instead of mutating query buffer", function()
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "SELECT * FROM users;" })
+		local original_bufnr = bufnr
+		local result = {
+			data = {
+				column_names = { "id", "name" },
+				rows = {
+					{ "1", "Alice" },
+				},
+			},
+		}
+		local context = {
+			query = "select * from users join teams on users.team_id = teams.id",
+			connection_name = "test",
+			adapter_name = "psql",
+		}
+
+		result_buffer.open_from_result(result, context)
+
+		local new_bufnr = vim.api.nvim_get_current_buf()
+		assert.are_not.equal(original_bufnr, new_bufnr)
+		assert.are.same({ "SELECT * FROM users;" }, vim.api.nvim_buf_get_lines(original_bufnr, 0, -1, false))
+		assert.are.same({ "id\tname", "1\tAlice" }, vim.api.nvim_buf_get_lines(new_bufnr, 0, -1, false))
+
+		if vim.api.nvim_buf_is_valid(new_bufnr) then
+			vim.api.nvim_set_current_buf(original_bufnr)
+			vim.api.nvim_buf_delete(new_bufnr, { force = true })
+		end
+	end)
 end)

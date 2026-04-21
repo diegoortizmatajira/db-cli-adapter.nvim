@@ -48,7 +48,7 @@ local function open_or_reuse_buffer(target_bufnr)
 	if target_bufnr and vim.api.nvim_buf_is_valid(target_bufnr) then
 		return target_bufnr
 	end
-	vim.cmd("botright split")
+	vim.cmd("botright new")
 	local bufnr = vim.api.nvim_get_current_buf()
 	return bufnr
 end
