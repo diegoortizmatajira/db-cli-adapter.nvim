@@ -1,4 +1,5 @@
 local Split = require("nui.split")
+local core = require("db-cli-adapter.core")
 
 local M = {
 	split = nil,
@@ -67,7 +68,8 @@ end
 --- and read the provided CSV file into the buffer. An optional callback from the configuration
 --- can be invoked after the file is loaded.
 --- @param csv_file string The path to the CSV file to display
-function M.show_csv_output(csv_file)
+--- @param context? table Query context containing `query` and `connection_name`
+function M.show_csv_output(csv_file, context)
 	local config = require("db-cli-adapter.config").current
 	if vim.fn.filereadable(csv_file) == 0 then
 		vim.notify("DbCliAdapter: CSV output file not found: " .. csv_file, vim.log.levels.ERROR)
@@ -84,6 +86,14 @@ function M.show_csv_output(csv_file)
 		vim.bo.filetype = "db-cli-output.csv"
 		-- Read the CSV file in a new buffer
 		vim.cmd("0read " .. csv_file)
+		if context and context.query and context.connection_name then
+			vim.b[M.split.bufnr].db_cli_csv_result_state = {
+				query = context.query,
+				connection = context.connection_name,
+			}
+		else
+			vim.b[M.split.bufnr].db_cli_csv_result_state = nil
+		end
 
 		-- Set the buffer to be readonly again
 		vim.bo.modifiable = false
@@ -120,11 +130,30 @@ function M.set_csv_output_handler(opts)
 	-- Create a new temp file to store the CSV output
 	opts.csv_file = os.tmpname() .. ".csv"
 	M._last_csv_file = opts.csv_file
-	opts.callback = function(output)
+	opts.callback = function(output, context)
 		vim.notify(vim.inspect(output), vim.log.levels.DEBUG)
-		M.show_csv_output(opts.csv_file)
+		M.show_csv_output(opts.csv_file, context)
 	end
 	return opts
+end
+
+--- Re-runs the original query for a CSV output buffer.
+--- @param bufnr? number
+function M.refresh(bufnr)
+	bufnr = bufnr or vim.api.nvim_get_current_buf()
+	if not vim.api.nvim_buf_is_valid(bufnr) then
+		vim.notify("Invalid buffer", vim.log.levels.ERROR)
+		return
+	end
+	local state = vim.b[bufnr].db_cli_csv_result_state
+	if not state or not state.query or not state.connection then
+		vim.notify("Current buffer is not a CSV result buffer", vim.log.levels.ERROR)
+		return
+	end
+	local opts = M.set_csv_output_handler({
+		connection = state.connection,
+	})
+	core.run(state.query, opts)
 end
 
 return M

@@ -39,7 +39,12 @@ function M.setup(opts)
 		require("db-cli-adapter.output.result_buffer").commit_changes()
 	end, { nargs = 0 })
 	vim.api.nvim_create_user_command("DbCliResultRefresh", function()
-		require("db-cli-adapter.output.result_buffer").refresh()
+		local bufnr = vim.api.nvim_get_current_buf()
+		if vim.b[bufnr].db_cli_result_state then
+			require("db-cli-adapter.output.result_buffer").refresh(bufnr)
+			return
+		end
+		require("db-cli-adapter.output").refresh(bufnr)
 	end, { nargs = 0 })
 	vim.api.nvim_create_user_command("DbCliSelectConnection", M.select_connection, { nargs = 0 })
 	vim.api.nvim_create_user_command("DbCliSidebarToggle", M.toggle_sidebar, { nargs = 0 })

@@ -186,7 +186,7 @@ A `sqls_connection_change_handler` is also available for
 | `:DbCliRunBufferEditable`     | Run full buffer query and open editable result buffer when PK columns are present |
 | `:DbCliResultPreviewChanges`  | Preview generated `INSERT`/`UPDATE`/`DELETE` statements from result buffer edits |
 | `:DbCliResultCommitChanges`   | Commit pending result-buffer changes to the same connection |
-| `:DbCliResultRefresh`         | Re-run the original query for the current result buffer |
+| `:DbCliResultRefresh`         | Re-run the original query for the current editable or CSV result buffer |
 | `:DbCliSidebarToggle`         | Toggle the database browser sidebar                   |
 | `:DbCliOutputToggle`          | Toggle the output panel                               |
 | `:DbCliEditConnection [key]`  | Edit a connection source file (`global` or `workspace`) |
