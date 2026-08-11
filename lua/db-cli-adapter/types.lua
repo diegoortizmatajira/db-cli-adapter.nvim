@@ -76,6 +76,9 @@
 --- @field csv DbCliAdapter.CsvOutputConfig Configuration for CSV output
 --- @field editable DbCliAdapter.EditableOutputConfig Configuration for editable result output
 
+--- @class DbCliAdapter.BackupConfig defines parameters for backup/restore configuration
+--- @field directory string Default directory where backup files are written
+
 --- @class DbCliAdapter.ConnectionChangedData
 --- @field name string The name of the new connection
 --- @field adapter string The adapter type of the new connection
@@ -146,6 +149,7 @@ end
 --- @field sources table<string, string|fun():string> A mapping of source names to their configurations
 --- @field sidebar DbCliAdapter.SidebarConfig Configuration for the sidebar
 --- @field output DbCliAdapter.OutputConfig Configuration for output handling
+--- @field backup DbCliAdapter.BackupConfig Configuration for backup/restore
 --- @field icons DbCliAdapter.IconConfig Configuration for icons used in the UI
 --- @field highlight DbCliAdapter.HighlighConfig Configuration for highlight groups used in the UI
 

@@ -80,6 +80,9 @@ local C = {
 				format = "csv",
 			},
 		},
+		backup = {
+			directory = vim.fn.stdpath("data") .. "/db-cli-adapter/backups",
+		},
 	},
 	--- @type DbCliAdapter.Config|nil
 	current = nil,

@@ -14,6 +14,8 @@ local AdapterConfig = require("db-cli-adapter.adapter_config")
 local adapter = AdapterConfig:new({
 	name = "Mysql (mysql)",
 	command = "mysql",
+	dump_command = "mysqldump",
+	supports_backup_restore = true,
 	--- Use pipe characters to format output as a table when a line contains a pipe (to complete the table)
 	line_preprocessor = function(line)
 		if line:match("\t") then
@@ -25,13 +27,11 @@ local adapter = AdapterConfig:new({
 	end,
 })
 
---- Execute a SQL command using mysql
---- @param command string The SQL command to execute
+--- Builds the connection-related args shared by query, backup and restore.
 --- @param params DbCliAdapter.mysql_params Connection parameters
---- @param opts? DbCliAdapter.RunOptions Optional table of execution parameters:
-function adapter:query(command, params, opts)
+--- @return string[] args
+local function build_connection_args(params)
 	local args = {}
-	local env = {}
 
 	if params and params.username then
 		table.insert(args, string.format("--user=%s", params.username))
@@ -57,15 +57,38 @@ function adapter:query(command, params, opts)
 	if params and params.skipssl then
 		table.insert(args, "--skip-ssl")
 	end
+	return args
+end
+
+--- Execute a SQL command using mysql
+--- @param command string The SQL command to execute
+--- @param params DbCliAdapter.mysql_params Connection parameters
+--- @param opts? DbCliAdapter.RunOptions Optional table of execution parameters:
+function adapter:query(command, params, opts)
+	local args = build_connection_args(params)
 	table.insert(args, "--table")
 	table.insert(args, string.format([[--execute=%s]], self:parse_command(command, params)))
 
 	return self:run_command({
 		cmd = self.command,
 		args = args,
-		env = env,
+		env = {},
 		callback = opts and opts.callback,
 	})
+end
+
+--- Returns args for a `mysqldump` invocation that writes a plain-SQL dump to stdout.
+--- @param params DbCliAdapter.mysql_params Connection parameters
+--- @return string[] args
+function adapter:get_backup_args(params)
+	return build_connection_args(params)
+end
+
+--- Returns args for a bare `mysql` invocation that applies a SQL script from stdin.
+--- @param params DbCliAdapter.mysql_params Connection parameters
+--- @return string[] args
+function adapter:get_restore_args(params)
+	return build_connection_args(params)
 end
 
 ---

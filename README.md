@@ -15,6 +15,8 @@ you can use the default tooling for each database provider.
 - Execute SQL queries from visual selection, current statement (via TreeSitter),
   or entire buffer.
 - Output results as formatted text tables or CSV files.
+- Backup and restore connections using each database's native dump/restore
+  tools, either locally or inside a Docker container.
 - Interactive sidebar to browse database schemas, tables, views, and columns.
 - Per-buffer connection management — different buffers can use different connections.
 - Global and workspace-scoped connection storage in JSON files.
@@ -37,6 +39,11 @@ you can use the default tooling for each database provider.
   - `mariadb` — MariaDB
   - `sqlite3` — SQLite
   - `usql` — Universal SQL client
+- (optional) For backup/restore, the matching dump tool: `pg_dump`
+  (PostgreSQL), `mysqldump` (MySQL), or `mariadb-dump` (MariaDB). SQLite
+  reuses `sqlite3`.
+- (optional) `docker` — enables running backup/restore commands inside a
+  container instead of locally.
 
 ## Installation
 
@@ -116,6 +123,11 @@ require('db-cli-adapter').setup({
         },
     },
 
+    -- Backup/restore settings
+    backup = {
+        directory = vim.fn.stdpath('data') .. '/db-cli-adapter/backups', -- default output directory
+    },
+
     -- Icons used in the sidebar and connection picker
     icons = {
         tree = {
@@ -191,6 +203,9 @@ A `sqls_connection_change_handler` is also available for
 | `:DbCliOutputToggle`          | Toggle the output panel                               |
 | `:DbCliEditConnection [key]`  | Edit a connection source file (`global` or `workspace`) |
 | `:DbCliTest`                  | Test the current adapter by listing tables             |
+| `:DbCliBackup`                | Back up the current connection to a SQL file           |
+| `:DbCliRestore`               | Restore the current connection from a SQL file          |
+| `:DbCliBackupProviders`       | List available backup/restore providers for the current connection |
 
 ### Suggested keymaps
 
@@ -303,6 +318,29 @@ Inside an editable result buffer:
 - run `:DbCliResultPreviewChanges` to inspect generated SQL
 - run `:DbCliResultCommitChanges` to apply changes
 - run `:DbCliResultRefresh` to reload from source query
+
+### Backup & restore
+
+Backup/restore is available for the `psql`, `mysql`, `mariadb`, and `sqlite`
+adapters (not `usql`), using each database's own dump/restore tool:
+`pg_dump`/`psql`, `mysqldump`/`mysql`, `mariadb-dump`/`mariadb`, and `sqlite3`.
+
+- `:DbCliBackupProviders` shows which providers are usable for the current
+  connection — a **local** provider (needs the dump tool installed on your
+  machine) and a **container** provider (needs `docker` installed; runs the
+  dump/restore tool via `docker exec` inside a container you name at prompt
+  time). Only providers whose required tool is actually installed are shown
+  as available.
+- `:DbCliBackup` resolves a connection (prompting if none is active), asks
+  which provider to use if more than one is available, prompts for a
+  container name/id for the container provider, then prompts for an output
+  path (prefilled with a timestamped default under `backup.directory`).
+- `:DbCliRestore` follows the same provider/container prompts, then asks for
+  an existing SQL file to restore from, and requires an explicit **Yes**
+  confirmation before running — restoring can overwrite existing data.
+
+Dumps are plain SQL, so a backup taken with one provider (local or container)
+can be restored with either.
 
 ### Health check
 
