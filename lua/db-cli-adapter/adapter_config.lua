@@ -12,6 +12,8 @@ end
 --- @class DbCliAdapter.AdapterConfig defines the configuration for an individual adapter
 --- @field name string The name of the adapter
 --- @field command string The command to invoke the database CLI
+--- @field dump_command? string The command used to produce a backup dump (defaults to `command` when unset)
+--- @field supports_backup_restore boolean Whether this adapter implements get_backup_args/get_restore_args
 --- @field schemas_query? string The query to list schemas in the database
 --- @field tables_query? string The query to list tables in the database
 --- @field table_columns_query? string The query to list fields/columns of a table
@@ -20,6 +22,7 @@ end
 local AdapterConfig = {
 	name = "",
 	command = "",
+	supports_backup_restore = false,
 }
 
 --- Creates a new instance of AdapterConfig
@@ -83,6 +86,9 @@ end
 function AdapterConfig:health_check()
 	local utils = require("db-cli-adapter.utils")
 	utils.check_executable(self.command)
+	if self.dump_command and self.dump_command ~= self.command then
+		utils.check_executable(self.dump_command)
+	end
 end
 
 --- Sends a query to the database, should be overridden by specific adapters
@@ -91,6 +97,22 @@ end
 --- @param opts? DbCliAdapter.RunOptions Optional table of execution parameters:
 function AdapterConfig:query(command, params, opts)
 	vim.notify("Query method not implemented for adapter: " .. self.name, vim.log.levels.WARN)
+end
+
+--- Returns the argv/env for a command that writes a plain-SQL backup dump to stdout.
+--- Should be overridden by adapters that set `supports_backup_restore = true`.
+--- @param params DbCliAdapter.base_params Connection parameters
+--- @return string[]|nil args, table<string,string>|nil env, string|nil err
+function AdapterConfig:get_backup_args(params)
+	return nil, nil, "Backup is not supported for adapter: " .. self.name
+end
+
+--- Returns the argv/env for a command that reads a plain-SQL dump from stdin and applies it.
+--- Should be overridden by adapters that set `supports_backup_restore = true`.
+--- @param params DbCliAdapter.base_params Connection parameters
+--- @return string[]|nil args, table<string,string>|nil env, string|nil err
+function AdapterConfig:get_restore_args(params)
+	return nil, nil, "Restore is not supported for adapter: " .. self.name
 end
 
 --- Parses the output from the executed command and converts it into a structured format.
@@ -183,6 +205,52 @@ function AdapterConfig:_run_with_system(opts)
 				end
 				local result = self:parse_output(output_lines)
 				opts.callback(result)
+			end)
+		end,
+	})
+end
+
+--- @class DbCliAdapter.RedirectOptions
+--- @field mode ">"|"<" Redirection direction: ">" writes stdout to `path` (backup), "<" feeds `path` as stdin (restore)
+--- @field path string The host filesystem path to redirect to/from
+
+--- @class DbCliAdapter.RedirectedExecutionOptions
+--- @field cmd string The command to execute
+--- @field args string[] A list of arguments to pass to the command
+--- @field env? table<string, string> Optional environment variables to set for the command
+--- @field redirect DbCliAdapter.RedirectOptions Redirection to apply to the command
+--- @field callback fun(ok: boolean) Called with true on a zero exit code, false otherwise
+
+--- Executes a command with stdin/stdout redirected to a host file via the shell.
+--- Used for backup/restore, where output must land on disk (or be fed in from disk)
+--- without ever passing through a Lua callback that could mangle binary data.
+--- @param opts DbCliAdapter.RedirectedExecutionOptions
+function AdapterConfig:run_redirected(opts)
+	local full_cmd = vim.list_extend({ opts.cmd }, opts.args or {})
+	local escaped = vim.tbl_map(vim.fn.shellescape, full_cmd)
+	table.insert(escaped, opts.redirect.mode)
+	table.insert(escaped, vim.fn.shellescape(opts.redirect.path))
+	local command = table.concat(escaped, " ")
+	local env = opts.env
+	if env and next(env) == nil then
+		env = nil
+	end
+	local error_lines = {}
+	vim.fn.jobstart(command, {
+		stderr_buffered = true,
+		env = env,
+		on_stderr = function(_, data, _)
+			if data then
+				vim.list_extend(error_lines, data)
+			end
+		end,
+		on_exit = function(_, exit_code, _)
+			vim.schedule(function()
+				local msg = table.concat(error_lines, "\n")
+				if msg ~= "" then
+					vim.notify(msg, exit_code == 0 and vim.log.levels.WARN or vim.log.levels.ERROR)
+				end
+				opts.callback(exit_code == 0)
 			end)
 		end,
 	})

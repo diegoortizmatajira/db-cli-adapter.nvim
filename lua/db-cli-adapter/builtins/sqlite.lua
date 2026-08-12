@@ -8,6 +8,7 @@ local AdapterConfig = require("db-cli-adapter.adapter_config")
 local adapter = AdapterConfig:new({
 	name = "Sqlite (sqlite3)",
 	command = "sqlite3",
+	supports_backup_restore = true,
 	schemas_query = [[SELECT 'public' AS schema_name;]],
 	tables_query = [[
 	       SELECT name AS table_name, 'public' AS table_schema
@@ -60,6 +61,20 @@ function adapter:query(command, params, opts)
 		env = env,
 		callback = opts and opts.callback,
 	})
+end
+
+--- Returns args for a `sqlite3` invocation that writes a plain-SQL dump to stdout.
+--- @param params DbCliAdapter.sqlite_params Connection parameters
+--- @return string[] args
+function adapter:get_backup_args(params)
+	return { params.filename, ".dump" }
+end
+
+--- Returns args for a `sqlite3` invocation that applies a SQL script from stdin.
+--- @param params DbCliAdapter.sqlite_params Connection parameters
+--- @return string[] args
+function adapter:get_restore_args(params)
+	return { params.filename }
 end
 
 --- Override to ignore schema (SQLite has no schemas) and only use the table name
