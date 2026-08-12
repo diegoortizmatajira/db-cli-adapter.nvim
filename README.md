@@ -126,6 +126,25 @@ require('db-cli-adapter').setup({
     -- Backup/restore settings
     backup = {
         directory = vim.fn.stdpath('data') .. '/db-cli-adapter/backups', -- default output directory
+
+        -- Optional: replace the built-in vim.ui.input container-name prompt with a
+        -- custom picker (e.g. Telescope). Receives a context table and must call
+        -- `callback` with the chosen container name/id (or call it with nil/nothing
+        -- to cancel). Leave nil to use the default vim.ui.input prompt.
+        container_picker = nil,
+        -- container_picker = function(context, callback)
+        --   -- context = { connection_name, connection, adapter, direction = "backup"|"restore" }
+        --   require('telescope.builtin').something({
+        --     attach_mappings = function(prompt_bufnr)
+        --       actions.select_default:replace(function()
+        --         local selection = action_state.get_selected_entry()
+        --         actions.close(prompt_bufnr)
+        --         callback(selection.value)
+        --       end)
+        --       return true
+        --     end,
+        --   })
+        -- end,
     },
 
     -- Icons used in the sidebar and connection picker
@@ -341,6 +360,12 @@ adapters (not `usql`), using each database's own dump/restore tool:
 
 Dumps are plain SQL, so a backup taken with one provider (local or container)
 can be restored with either.
+
+The container name/id prompt defaults to `vim.ui.input`, but can be replaced
+with a custom picker via `backup.container_picker` — useful for integrating
+Telescope or another selector to pick from running containers instead of
+typing a name. See the `container_picker` example in the Configuration
+section above.
 
 ### Health check
 

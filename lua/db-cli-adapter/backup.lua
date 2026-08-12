@@ -109,14 +109,27 @@ function M.default_backup_path(connection_name)
 	return dir .. "/" .. filename
 end
 
+--- Default container picker: prompts via `vim.ui.input`.
+--- @param _ DbCliAdapter.ContainerPickerContext
+--- @param callback fun(container: string|nil)
+local function default_container_picker(_, callback)
+	vim.ui.input({ prompt = "Container name/id: " }, function(container)
+		callback(container and container ~= "" and container or nil)
+	end)
+end
+
 --- Prompts to select from the given providers, and to supply a container name/id when
---- a container-based provider is chosen.
+--- a container-based provider is chosen. Container selection goes through
+--- `config.current.backup.container_picker` when set (e.g. to integrate with Telescope
+--- or another picker), falling back to `vim.ui.input` otherwise.
 --- @param providers table[]
+--- @param context DbCliAdapter.ContainerPickerContext
 --- @param on_ready fun(provider: table, container: string|nil)
-local function with_provider(providers, on_ready)
+local function with_provider(providers, context, on_ready)
 	local function proceed(provider)
 		if provider.kind == "container" then
-			vim.ui.input({ prompt = "Container name/id: " }, function(container)
+			local picker = (config.current.backup and config.current.backup.container_picker) or default_container_picker
+			picker(context, function(container)
 				if not container or container == "" then
 					vim.notify("Cancelled: no container provided", vim.log.levels.WARN)
 					return
@@ -186,7 +199,8 @@ function M.backup(opts)
 			)
 			return
 		end
-		with_provider(providers, function(provider, container)
+		local context = { connection_name = name, connection = connection, adapter = adapter, direction = "backup" }
+		with_provider(providers, context, function(provider, container)
 			local args, env, err = adapter:get_backup_args(connection)
 			if not args then
 				vim.notify(err, vim.log.levels.ERROR)
@@ -245,7 +259,8 @@ function M.restore(opts)
 			)
 			return
 		end
-		with_provider(providers, function(provider, container)
+		local context = { connection_name = name, connection = connection, adapter = adapter, direction = "restore" }
+		with_provider(providers, context, function(provider, container)
 			vim.ui.input({ prompt = "Restore input path: " }, function(path)
 				if not path or path == "" then
 					vim.notify("Restore cancelled: no path provided", vim.log.levels.WARN)
