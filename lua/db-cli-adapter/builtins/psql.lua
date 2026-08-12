@@ -13,13 +13,14 @@ local AdapterConfig = require("db-cli-adapter.adapter_config")
 local adapter = AdapterConfig:new({
 	name = "PostgreSQL (psql)",
 	command = "psql",
+	dump_command = "pg_dump",
+	supports_backup_restore = true,
 })
 
---- Execute a SQL command using psql
---- @param command string The SQL command to execute
+--- Builds the connection-related args/env shared by query, backup and restore.
 --- @param params DbCliAdapter.pgsql_params Connection parameters
---- @param opts? DbCliAdapter.RunOptions Optional table of execution parameters:
-function adapter:query(command, params, opts)
+--- @return string[] args, table<string,string> env
+local function build_connection_args(params)
 	local args = {}
 	local env = {}
 
@@ -41,6 +42,15 @@ function adapter:query(command, params, opts)
 	if params and params.dbname then
 		table.insert(args, string.format("--dbname=%s", params.dbname))
 	end
+	return args, env
+end
+
+--- Execute a SQL command using psql
+--- @param command string The SQL command to execute
+--- @param params DbCliAdapter.pgsql_params Connection parameters
+--- @param opts? DbCliAdapter.RunOptions Optional table of execution parameters:
+function adapter:query(command, params, opts)
+	local args, env = build_connection_args(params)
 	--- Disable pager to avoid issues with output capturing
 	table.insert(args, "-P")
 	table.insert(args, "pager=off")
@@ -66,6 +76,20 @@ function adapter:query(command, params, opts)
 		env = env,
 		callback = opts and opts.callback,
 	})
+end
+
+--- Returns args/env for a `pg_dump` invocation that writes a plain-SQL dump to stdout.
+--- @param params DbCliAdapter.pgsql_params Connection parameters
+--- @return string[] args, table<string,string> env
+function adapter:get_backup_args(params)
+	return build_connection_args(params)
+end
+
+--- Returns args/env for a bare `psql` invocation that applies a SQL script from stdin.
+--- @param params DbCliAdapter.pgsql_params Connection parameters
+--- @return string[] args, table<string,string> env
+function adapter:get_restore_args(params)
+	return build_connection_args(params)
 end
 
 --- Return the connection URL for the adapter

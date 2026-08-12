@@ -76,6 +76,16 @@
 --- @field csv DbCliAdapter.CsvOutputConfig Configuration for CSV output
 --- @field editable DbCliAdapter.EditableOutputConfig Configuration for editable result output
 
+--- @class DbCliAdapter.ContainerPickerContext
+--- @field connection_name string The connection name being backed up/restored
+--- @field connection DbCliAdapter.base_params The connection parameters
+--- @field adapter DbCliAdapter.AdapterConfig The adapter for the connection
+--- @field direction "backup"|"restore" Whether this picker call is for a backup or a restore
+
+--- @class DbCliAdapter.BackupConfig defines parameters for backup/restore configuration
+--- @field directory string Default directory where backup files are written
+--- @field container_picker? fun(context: DbCliAdapter.ContainerPickerContext, callback: fun(container: string|nil)) Optional custom container picker (e.g. to integrate Telescope or another selector). Must call `callback` with the chosen container name/id, or with nil/nothing if cancelled. Falls back to `vim.ui.input` when nil.
+
 --- @class DbCliAdapter.ConnectionChangedData
 --- @field name string The name of the new connection
 --- @field adapter string The adapter type of the new connection
@@ -146,6 +156,7 @@ end
 --- @field sources table<string, string|fun():string> A mapping of source names to their configurations
 --- @field sidebar DbCliAdapter.SidebarConfig Configuration for the sidebar
 --- @field output DbCliAdapter.OutputConfig Configuration for output handling
+--- @field backup DbCliAdapter.BackupConfig Configuration for backup/restore
 --- @field icons DbCliAdapter.IconConfig Configuration for icons used in the UI
 --- @field highlight DbCliAdapter.HighlighConfig Configuration for highlight groups used in the UI
 

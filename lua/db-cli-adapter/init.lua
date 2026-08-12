@@ -13,6 +13,7 @@ function M.setup(opts)
 		vim.validate("opts.sources", opts.sources, "table", true)
 		vim.validate("opts.sidebar", opts.sidebar, "table", true)
 		vim.validate("opts.output", opts.output, "table", true)
+		vim.validate("opts.backup", opts.backup, "table", true)
 		vim.validate("opts.icons", opts.icons, "table", true)
 		vim.validate("opts.highlight", opts.highlight, "table", true)
 		vim.validate("opts.connection_change_handler", opts.connection_change_handler, "function", true)
@@ -61,6 +62,9 @@ function M.setup(opts)
 		end
 		core.run(adapter.tables_query)
 	end, { nargs = 0 })
+	vim.api.nvim_create_user_command("DbCliBackup", M.backup, { nargs = 0 })
+	vim.api.nvim_create_user_command("DbCliRestore", M.restore, { nargs = 0 })
+	vim.api.nvim_create_user_command("DbCliBackupProviders", M.list_backup_providers, { nargs = 0 })
 end
 
 --- Prompts the user to select a database connection from the available connections.
@@ -256,6 +260,21 @@ end
 function M.hide_output()
 	local output_panel = require("db-cli-adapter.output")
 	output_panel.hide()
+end
+
+--- Backs up the current (or interactively selected) database connection to a SQL file.
+function M.backup()
+	require("db-cli-adapter.backup").backup()
+end
+
+--- Restores the current (or interactively selected) database connection from a SQL file.
+function M.restore()
+	require("db-cli-adapter.backup").restore()
+end
+
+--- Lists the backup/restore providers available for the current (or selected) connection.
+function M.list_backup_providers()
+	require("db-cli-adapter.backup").list_providers_command()
 end
 
 return M

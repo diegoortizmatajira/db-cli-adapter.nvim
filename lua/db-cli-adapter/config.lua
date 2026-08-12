@@ -80,6 +80,12 @@ local C = {
 				format = "csv",
 			},
 		},
+		backup = {
+			directory = vim.fn.stdpath("data") .. "/db-cli-adapter/backups",
+			-- Optional custom container picker: fun(context, callback). If nil, falls
+			-- back to vim.ui.input. See DbCliAdapter.ContainerPickerContext.
+			container_picker = nil,
+		},
 	},
 	--- @type DbCliAdapter.Config|nil
 	current = nil,
