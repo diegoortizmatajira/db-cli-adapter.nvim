@@ -63,6 +63,13 @@ describe("backup.default_backup_path", function()
 			backup.default_backup_path("my postgres", { backup_directory = "/tmp/db-cli-adapter-test-backups/mine" })
 		assert.is_truthy(path:match("^/tmp/db%-cli%-adapter%-test%-backups/mine/"))
 	end)
+
+	it("trims leading/trailing underscores produced by sanitizing the connection name", function()
+		local path = backup.default_backup_path("🌐 my postgres!")
+		local filename = vim.fn.fnamemodify(path, ":t")
+		assert.is_falsy(filename:match("^_"))
+		assert.is_truthy(filename:match("^my_postgres_%d"))
+	end)
 end)
 
 describe("container_picker extensibility", function()
