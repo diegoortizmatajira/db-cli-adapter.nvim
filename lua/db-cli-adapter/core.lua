@@ -2,6 +2,8 @@ local config = require("db-cli-adapter.config")
 local M = {
 	--- @type DbCliAdapter.base_params[]|nil
 	_cached_connections = nil,
+	--- @type table<string, {source_path: string, original_name: string}>|nil
+	_connection_locations = nil,
 	--- @type table<number, fun(connection: string)>
 	_connection_changed_callbacks = {},
 }
@@ -29,6 +31,8 @@ function M.get_available_connections(cache_only)
 
 	--- @type table<string,DbCliAdapter.base_params>
 	local connections = {}
+	--- @type table<string, {source_path: string, original_name: string}>
+	local locations = {}
 	for key, source_path in pairs(config.current.sources) do
 		if type(source_path) == "function" then
 			source_path = source_path()
@@ -46,13 +50,46 @@ function M.get_available_connections(cache_only)
 					local adapter_icon = adapter and adapter:get_icon(conn)
 						or config.current.icons.adapter.default
 						or "󰪩 "
-					connections[string.format("%s%s %s", source_icon, adapter_icon, name)] = conn
+					local display_name = string.format("%s%s %s", source_icon, adapter_icon, name)
+					connections[display_name] = conn
+					locations[display_name] = { source_path = source_path, original_name = name }
 				end
 			end
 		end
 	end
 	M._cached_connections = connections
+	M._connection_locations = locations
 	return connections
+end
+
+--- Persists a field on a connection back to its source JSON file on disk, so it survives
+--- across sessions. Requires that `get_available_connections` has been called at least
+--- once (e.g. via connection resolution) so the connection's source location is known.
+--- @param connection_name string The connection's display name, as returned by `get_available_connections`.
+--- @param field string The connection field to set.
+--- @param value any The value to persist.
+--- @return boolean ok Whether the field was successfully persisted.
+function M.set_connection_field(connection_name, field, value)
+	local location = M._connection_locations and M._connection_locations[connection_name]
+	if not location then
+		vim.notify("Cannot find source file for connection: " .. connection_name, vim.log.levels.ERROR)
+		return false
+	end
+	if vim.fn.filereadable(location.source_path) ~= 1 then
+		vim.notify("Connections source file not found: " .. location.source_path, vim.log.levels.ERROR)
+		return false
+	end
+	local file_content = vim.fn.readfile(location.source_path)
+	local ok, decoded = pcall(vim.fn.json_decode, table.concat(file_content, "\n"))
+	if not ok or type(decoded) ~= "table" or type(decoded[location.original_name]) ~= "table" then
+		vim.notify("Failed to update connections source file: " .. location.source_path, vim.log.levels.ERROR)
+		return false
+	end
+	decoded[location.original_name][field] = value
+	vim.fn.writefile({ vim.fn.json_encode(decoded) }, location.source_path)
+	M._cached_connections = nil
+	M._connection_locations = nil
+	return true
 end
 
 --- Sets a callback function to be executed when the database connection changes.
@@ -213,6 +250,7 @@ function M.edit_connections_source(key)
 		local source_dir = vim.fn.fnamemodify(source_path, ":h")
 		vim.fn.mkdir(source_dir, "p")
 		M._cached_connections = nil
+		M._connection_locations = nil
 		vim.cmd.edit(vim.fn.fnameescape(source_path))
 	end
 	if key and key ~= "" then

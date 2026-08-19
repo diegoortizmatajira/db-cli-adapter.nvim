@@ -57,6 +57,12 @@ describe("backup.default_backup_path", function()
 		assert.is_truthy(path:match("%.sql$"))
 		assert.is_falsy(path:match("[^%w%-_./]"))
 	end)
+
+	it("prefers the connection's own backup_directory over the global one", function()
+		local path =
+			backup.default_backup_path("my postgres", { backup_directory = "/tmp/db-cli-adapter-test-backups/mine" })
+		assert.is_truthy(path:match("^/tmp/db%-cli%-adapter%-test%-backups/mine/"))
+	end)
 end)
 
 describe("container_picker extensibility", function()
@@ -107,6 +113,11 @@ describe("container_picker extensibility", function()
 		end
 		orig_ui_input = vim.ui.input
 		orig_ui_select = vim.ui.select
+		-- Default to declining the "save preferred directory?" prompt so tests that
+		-- don't care about it don't need to stub vim.ui.select themselves.
+		vim.ui.select = function(_, _opts, cb)
+			cb("No")
+		end
 		orig_filereadable = vim.fn.filereadable
 	end)
 
@@ -180,5 +191,102 @@ describe("container_picker extensibility", function()
 		assert.are.equal("docker", captured_run_opts.cmd)
 		assert.are.same({ "exec", "-i", "picked-container", "sh", "--fake" }, captured_run_opts.args)
 		assert.are.equal("<", captured_run_opts.redirect.mode)
+	end)
+end)
+
+describe("preferred backup directory persistence", function()
+	local core = require("db-cli-adapter.core")
+	local config = require("db-cli-adapter.config")
+	local utils = require("db-cli-adapter.utils")
+
+	local fake_adapter, orig_ui_input, orig_ui_select, orig_is_executable, source_path
+
+	before_each(function()
+		-- Force a single local provider so provider selection is deterministic
+		-- regardless of whether `docker` happens to be installed on the test host.
+		orig_is_executable = utils.is_executable
+		utils.is_executable = function(cmd)
+			return cmd == "sh"
+		end
+		source_path = os.tmpname()
+		vim.fn.writefile({ vim.fn.json_encode({ test_conn = { adapter = "fake" } }) }, source_path)
+		fake_adapter = {
+			name = "fake",
+			command = "sh",
+			supports_backup_restore = true,
+			get_icon = function()
+				return "X"
+			end,
+			get_backup_args = function(_, _params)
+				return {}, {}
+			end,
+			run_redirected = function(_, opts)
+				opts.callback(true)
+			end,
+		}
+		config.current = vim.tbl_deep_extend("force", config.default, {
+			adapters = { fake = fake_adapter },
+			sources = { global = source_path },
+			backup = { directory = "/tmp/db-cli-adapter-test-backups" },
+		})
+		config.current.sources.workspace = nil
+		core._cached_connections = nil
+		core._connection_locations = nil
+		orig_ui_input = vim.ui.input
+		orig_ui_select = vim.ui.select
+	end)
+
+	after_each(function()
+		core._cached_connections = nil
+		core._connection_locations = nil
+		config.current = nil
+		vim.ui.input = orig_ui_input
+		vim.ui.select = orig_ui_select
+		utils.is_executable = orig_is_executable
+		os.remove(source_path)
+	end)
+
+	local function connection_display_name()
+		local names = vim.tbl_keys(core.get_available_connections())
+		return names[1]
+	end
+
+	it("offers to save the chosen directory and persists it to the connection's source file", function()
+		local name = connection_display_name()
+		local select_prompt
+		vim.ui.input = function(opts, cb)
+			cb(opts.default)
+		end
+		vim.ui.select = function(_, opts, cb)
+			select_prompt = opts.prompt
+			cb("Yes")
+		end
+
+		backup.backup({ connection = name })
+
+		assert.is_truthy(select_prompt and select_prompt:match("^Save "))
+		local saved = vim.fn.json_decode(table.concat(vim.fn.readfile(source_path), "\n"))
+		assert.are.equal("/tmp/db-cli-adapter-test-backups", saved.test_conn.backup_directory)
+	end)
+
+	it("does not offer to save when the path already matches the saved backup_directory", function()
+		vim.fn.writefile({
+			vim.fn.json_encode({
+				test_conn = { adapter = "fake", backup_directory = "/tmp/db-cli-adapter-test-backups" },
+			}),
+		}, source_path)
+		local name = connection_display_name()
+		local select_called = false
+		vim.ui.input = function(opts, cb)
+			cb(opts.default)
+		end
+		vim.ui.select = function(_, _opts, cb)
+			select_called = true
+			cb("No")
+		end
+
+		backup.backup({ connection = name })
+
+		assert.is_false(select_called)
 	end)
 end)

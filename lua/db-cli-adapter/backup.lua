@@ -98,15 +98,43 @@ local function sanitize_filename(name)
 	return (name:gsub("[^%w%-_]", "_"))
 end
 
---- Computes a default, timestamped backup file path for a connection under the
---- configured backup directory, creating the directory if needed.
+--- Computes a default, timestamped backup file path for a connection, creating the
+--- directory if needed. Prefers the connection's own `backup_directory`, when set,
+--- over the globally configured backup directory.
 --- @param connection_name string
+--- @param connection? DbCliAdapter.base_params
 --- @return string path
-function M.default_backup_path(connection_name)
-	local dir = config.current.backup.directory
+function M.default_backup_path(connection_name, connection)
+	local dir = (connection and connection.backup_directory) or config.current.backup.directory
 	vim.fn.mkdir(dir, "p")
 	local filename = string.format("%s_%s.sql", sanitize_filename(connection_name), os.date("%Y%m%d_%H%M%S"))
 	return dir .. "/" .. filename
+end
+
+--- After the user confirms a backup/restore path, offers to save its directory as the
+--- connection's preferred backup/restore directory, when it isn't already saved as such.
+--- @param name string
+--- @param connection DbCliAdapter.base_params|nil
+--- @param path string
+local function maybe_save_backup_directory(name, connection, path)
+	if not connection then
+		return
+	end
+	local directory = vim.fn.fnamemodify(path, ":h")
+	if connection.backup_directory == directory then
+		return
+	end
+	vim.ui.select({ "Yes", "No" }, {
+		prompt = string.format("Save '%s' as the preferred backup/restore directory for '%s'?", directory, name),
+	}, function(choice)
+		if choice ~= "Yes" then
+			return
+		end
+		if core.set_connection_field(name, "backup_directory", directory) then
+			connection.backup_directory = directory
+			vim.notify("Saved preferred backup/restore directory for " .. name)
+		end
+	end)
 end
 
 --- Default container picker: prompts via `vim.ui.input`.
@@ -207,11 +235,12 @@ function M.backup(opts)
 				return
 			end
 			local cmd, wrapped_args = apply_provider(provider, container, adapter.dump_command or adapter.command, args)
-			vim.ui.input({ prompt = "Backup output path: ", default = M.default_backup_path(name) }, function(path)
+			vim.ui.input({ prompt = "Backup output path: ", default = M.default_backup_path(name, connection) }, function(path)
 				if not path or path == "" then
 					vim.notify("Backup cancelled: no path provided", vim.log.levels.WARN)
 					return
 				end
+				maybe_save_backup_directory(name, connection, path)
 				vim.fn.mkdir(vim.fn.fnamemodify(path, ":h"), "p")
 				adapter:run_redirected({
 					cmd = cmd,
@@ -261,7 +290,9 @@ function M.restore(opts)
 		end
 		local context = { connection_name = name, connection = connection, adapter = adapter, direction = "restore" }
 		with_provider(providers, context, function(provider, container)
-			vim.ui.input({ prompt = "Restore input path: " }, function(path)
+			local restore_default = connection and connection.backup_directory and (connection.backup_directory .. "/")
+				or nil
+			vim.ui.input({ prompt = "Restore input path: ", default = restore_default }, function(path)
 				if not path or path == "" then
 					vim.notify("Restore cancelled: no path provided", vim.log.levels.WARN)
 					return
@@ -270,6 +301,7 @@ function M.restore(opts)
 					vim.notify("File not readable: " .. path, vim.log.levels.ERROR)
 					return
 				end
+				maybe_save_backup_directory(name, connection, path)
 				vim.ui.select({ "Yes", "No" }, {
 					prompt = string.format("Restore into '%s' from %s? This may overwrite existing data.", name, path),
 				}, function(choice)

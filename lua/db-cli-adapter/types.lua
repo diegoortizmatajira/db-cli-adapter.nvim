@@ -1,6 +1,7 @@
 --- @class DbCliAdapter.base_params
 --- @field timeout number Timeout in seconds for the connection
 --- @field adapter string The adapter name (e.g., "psql", "sqlite", "usql", "mysql", "mariadb".)
+--- @field backup_directory? string Preferred directory for this connection's backup/restore files, persisted to the connection's source file
 
 --- @class DbCliAdapter.OutputData
 --- @field column_names string[] List of column names in the output
