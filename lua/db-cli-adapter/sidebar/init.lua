@@ -1,6 +1,7 @@
 local core = require("db-cli-adapter.core")
 local config = require("db-cli-adapter.config")
 local nodes = require("db-cli-adapter.sidebar.nodes")
+local output = require("db-cli-adapter.output")
 
 local Split = require("nui.split")
 local NuiTree = require("nui.tree")
@@ -259,11 +260,7 @@ function M.init()
 					if not query then
 						return
 					end
-					core.run(query, {
-						callback = function(result, context)
-							require("db-cli-adapter.output.result_buffer").open_from_result(result, context)
-						end,
-					})
+					core.run(query, output.set_csv_output_handler({}))
 				end)
 			end)
 		end)
