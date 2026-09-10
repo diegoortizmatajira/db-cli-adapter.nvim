@@ -34,6 +34,7 @@ local C = {
 				database = "@operator",
 				schema = "@macro",
 				table = "@number",
+				view = "@keyword",
 				column = "@symbol",
 				key = "@type",
 			},
@@ -47,6 +48,7 @@ local C = {
 				database = " ",
 				schema = "󰲋 ",
 				table = " ",
+				view = "󰈈 ",
 				column = "󰭸 ",
 				key = "󰌆 ",
 			},
@@ -70,7 +72,13 @@ local C = {
 				quit = { "q" },
 				refresh = { "r" },
 				refresh_all = { "R" },
+				execute_query = { "x" },
+				open_query = { "X" },
 			},
+			-- Maximum number of rows returned by the generated `SELECT` statements used by the
+			-- execute_query/open_query sidebar actions. Set to nil or 0 to disable the limit.
+			-- The LIMIT syntax itself is applied per-adapter (see AdapterConfig:build_select_query).
+			query_row_limit = 200,
 		},
 		output = {
 			csv = {

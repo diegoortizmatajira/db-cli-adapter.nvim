@@ -20,9 +20,12 @@
 --- @field quit string[] Keybindings to quit the sidebar
 --- @field refresh string[] Keybindings to refresh the sidebar
 --- @field refresh_all string[] Keybindings to refresh the sidebar
+--- @field execute_query string[] Keybindings to run a `SELECT` query for the table/view node and open the result panel
+--- @field open_query string[] Keybindings to open a SQL buffer pre-filled with a `SELECT` query for the table/view node
 
 --- @class DbCliAdapter.SidebarConfig
 --- @field keybindings DbCliAdapter.SidebarKeybindingsConfig Keybindings for sidebar actions
+--- @field query_row_limit? number Max rows returned by generated `SELECT` statements. nil or 0 disables the limit.
 
 --- @class DbCliAdapter.TreeIcons
 --- @field chevron_open string Icon for an expanded tree node
@@ -32,6 +35,7 @@
 --- @field database string Icon for a database
 --- @field schema string Icon for a schema
 --- @field table string Icon for a table
+--- @field view string Icon for a view
 --- @field column string Icon for a column
 --- @field key string Icon for a key
 
@@ -43,6 +47,7 @@
 --- @field database string Highlight group for a database
 --- @field schema string Highlight group for a schema
 --- @field table string Highlight group for a table
+--- @field view string Highlight group for a view
 --- @field column string Highlight group for a column
 --- @field key string Highlight group for a key
 

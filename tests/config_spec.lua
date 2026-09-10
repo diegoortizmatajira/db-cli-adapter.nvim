@@ -23,6 +23,13 @@ describe("config", function()
 			assert.is_table(kb.quit)
 			assert.is_table(kb.refresh)
 			assert.is_table(kb.refresh_all)
+			assert.is_table(kb.execute_query)
+			assert.is_table(kb.open_query)
+		end)
+
+		it("has a default sidebar query row limit", function()
+			assert.is_number(config.default.sidebar.query_row_limit)
+			assert.is_true(config.default.sidebar.query_row_limit > 0)
 		end)
 
 		it("has icon configurations", function()
