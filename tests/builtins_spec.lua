@@ -100,6 +100,17 @@ describe("builtin adapters", function()
 			assert.is_truthy(query:match("users"))
 		end)
 
+		it("queries sqlite_master for views", function()
+			local query = adapter:get_views_query("public")
+			assert.is_truthy(query:match("sqlite_master"))
+			assert.is_truthy(query:match("type='view'"))
+		end)
+
+		it("ignores schema when qualifying table names", function()
+			assert.are.equal('"users"', adapter:qualify_table_name("public", "users"))
+			assert.are.equal('"users"', adapter:qualify_table_name(nil, "users"))
+		end)
+
 		it("generates connection URL data with filename", function()
 			local data = adapter:get_url_connection({
 				filename = "/tmp/test.db",
@@ -133,6 +144,19 @@ describe("builtin adapters", function()
 			local query_fn = adapter:get_schemas_query()
 			local query = query_fn({ url = "sqlite3:///tmp/test.db" })
 			assert.is_truthy(query:match("public"))
+		end)
+
+		it("resolves postgres views query from connection URL", function()
+			local query_fn = adapter:get_views_query("public")
+			local query = query_fn({ url = "postgres://user:pass@localhost/db" })
+			assert.is_truthy(query:match("information_schema.views"))
+		end)
+
+		it("resolves sqlite views query from connection URL", function()
+			local query_fn = adapter:get_views_query("public")
+			local query = query_fn({ url = "sqlite3:///tmp/test.db" })
+			assert.is_truthy(query:match("sqlite_master"))
+			assert.is_truthy(query:match("type='view'"))
 		end)
 
 		it("decomposes URL for connection data", function()

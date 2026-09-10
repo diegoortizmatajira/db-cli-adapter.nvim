@@ -158,6 +158,19 @@ function adapter:get_tables_query(schema)
 	end
 end
 
+function adapter:get_views_query(schema)
+	--- Return a SQL query to retrieve the list of views in the specified schema
+	--- @param params DbCliAdapter.usql_params Connection parameters
+	return function(params)
+		local query = AdapterConfig.get_views_query(self, schema)
+		--- Special handling for SQLite
+		if params.url:match("^sqlite3") then
+			query = require("db-cli-adapter.builtins.sqlite"):get_views_query(schema)
+		end
+		return self:parse_command(query, params)
+	end
+end
+
 function adapter:get_table_columns_query(schema, table)
 	--- Return a SQL query to retrieve the list of columns in the specified table
 	--- @param params DbCliAdapter.usql_params Connection parameters

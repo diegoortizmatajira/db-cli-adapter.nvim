@@ -82,6 +82,11 @@ function adapter:get_table_columns_query(schema, table_name)
 	return string.format(self.table_columns_query, table_name)
 end
 
+--- Override to ignore schema (SQLite has no schemas) and only quote the table name
+function adapter:qualify_table_name(_, table_name)
+	return self:quote_identifier(table_name)
+end
+
 --- Returns query to list PK columns for SQLite tables.
 --- @param _ string|nil
 --- @param table_name string

@@ -141,6 +141,53 @@ describe("AdapterConfig", function()
 		end)
 	end)
 
+	describe("get_views_query", function()
+		it("interpolates schema name", function()
+			local query = adapter:get_views_query("public")
+			assert.is_truthy(query:match("public"))
+		end)
+
+		it("escapes single quotes in schema name", function()
+			local query = adapter:get_views_query("it's")
+			assert.is_truthy(query:match("it''s"))
+			assert.is_falsy(query:match("it's[^']"))
+		end)
+
+		it("returns empty string when not defined", function()
+			adapter.views_query = nil
+			local query = adapter:get_views_query("public")
+			assert.are.equal("", query)
+		end)
+	end)
+
+	describe("qualify_table_name", function()
+		it("quotes and joins schema and table name", function()
+			assert.are.equal('"public"."users"', adapter:qualify_table_name("public", "users"))
+		end)
+
+		it("quotes only the table name when schema is nil or empty", function()
+			assert.are.equal('"users"', adapter:qualify_table_name(nil, "users"))
+			assert.are.equal('"users"', adapter:qualify_table_name("", "users"))
+		end)
+	end)
+
+	describe("build_select_query", function()
+		it("builds a SELECT with explicit columns and no limit by default", function()
+			local query = adapter:build_select_query("public", "users", { '"id"', '"name"' }, nil)
+			assert.are.equal('SELECT "id", "name" FROM "public"."users"', query)
+		end)
+
+		it("appends a LIMIT clause when a positive limit is given", function()
+			local query = adapter:build_select_query("public", "users", { '"id"' }, 200)
+			assert.are.equal('SELECT "id" FROM "public"."users" LIMIT 200', query)
+		end)
+
+		it("omits the LIMIT clause when the limit is 0", function()
+			local query = adapter:build_select_query("public", "users", { '"id"' }, 0)
+			assert.are.equal('SELECT "id" FROM "public"."users"', query)
+		end)
+	end)
+
 	describe("get_table_columns_query", function()
 		it("interpolates schema and table names", function()
 			local query = adapter:get_table_columns_query("public", "users")
