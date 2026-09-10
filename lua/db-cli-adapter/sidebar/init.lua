@@ -9,6 +9,9 @@ local NuiLine = require("nui.line")
 local M = {
 	split = nil,
 	tree = nil,
+	-- Window the sidebar was last opened from, so query buffers can be opened there
+	-- instead of always splitting.
+	previous_winid = nil,
 }
 
 --- Attempt to refresh the sidebar with the selected adapter.
@@ -118,6 +121,18 @@ local function _build_select_query(node, adapter, callback)
 	})
 end
 
+--- Switches to the window the sidebar was opened from and loads a new empty buffer there,
+--- like a normal file open. Falls back to a new full-width split if that window is gone
+--- (e.g. it was closed) so the buffer never ends up squeezed into the narrow sidebar column.
+local function _open_query_buffer()
+	if M.previous_winid and vim.api.nvim_win_is_valid(M.previous_winid) then
+		vim.api.nvim_set_current_win(M.previous_winid)
+		vim.cmd("enew")
+	else
+		vim.cmd("botright new")
+	end
+end
+
 --- Attempt to expand a tree node if it is expandable and not already expanded.
 --- If the node has a refresh function and is marked as expandable but has no children loaded,
 --- it will call the refresh function to load its children before expanding.
@@ -141,6 +156,7 @@ function M.init()
 		vim.notify("DbCliAdapter: Configuration not found.", vim.log.levels.ERROR)
 		return
 	end
+	M.previous_winid = vim.api.nvim_get_current_win()
 	M.split = Split({
 		relative = "editor",
 		position = "right",
@@ -267,7 +283,7 @@ function M.init()
 					if not query then
 						return
 					end
-					vim.cmd("botright new")
+					_open_query_buffer()
 					local bufnr = vim.api.nvim_get_current_buf()
 					vim.bo[bufnr].buftype = "nofile"
 					vim.bo[bufnr].bufhidden = "hide"
@@ -312,6 +328,7 @@ function M.toggle()
 		if M.split.winid and vim.api.nvim_win_is_valid(M.split.winid) then
 			M.split:hide()
 		else
+			M.previous_winid = vim.api.nvim_get_current_win()
 			M.split:show()
 		end
 	else
