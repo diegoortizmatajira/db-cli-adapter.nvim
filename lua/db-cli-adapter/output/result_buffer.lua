@@ -299,9 +299,15 @@ local function open_result(result, context, table_meta, pk_columns, opts)
 	set_result_state(bufnr, state)
 	if not state.editable then
 		render_readonly_result(bufnr, opts.readonly_reason or "Result opened in readonly mode")
-		return
+	else
+		vim.notify("Editable result buffer ready. Use :DbCliResultPreviewChanges before commit.", vim.log.levels.INFO)
 	end
-	vim.notify("Editable result buffer ready. Use :DbCliResultPreviewChanges before commit.", vim.log.levels.INFO)
+
+	local csv_config = config.current and config.current.output and config.current.output.csv
+	if csv_config and csv_config.after_query_callback then
+		-- No CSV file backs this buffer (data is rendered directly), so file_path is nil.
+		csv_config.after_query_callback(bufnr, nil)
+	end
 end
 
 --- Opens an editable result buffer from query output.

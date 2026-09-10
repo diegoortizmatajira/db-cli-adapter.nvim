@@ -73,7 +73,7 @@
 --- @field editable? boolean If true, attempts to open query results in editable result-buffer mode
 
 --- @class DbCliAdapter.CsvOutputConfig defines parameters for CSV output configuration
---- @field after_query_callback? fun(bufnr: number, file_path: string) Optional callback function to handle the
+--- @field after_query_callback? fun(bufnr: number, file_path: string|nil) Called after query output loads into a buffer. Fires for the CSV output panel (file_path is the CSV temp file) and for editable/readonly result-buffer output (file_path is nil).
 
 --- @class DbCliAdapter.EditableOutputConfig defines parameters for editable result buffer output
 --- @field format? string Delimiter format for editable result buffers: "tsv" (default) or "csv"

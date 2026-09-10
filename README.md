@@ -121,7 +121,10 @@ require('db-cli-adapter').setup({
     -- Output settings
     output = {
         csv = {
-            after_query_callback = nil, -- function(csv_file_path) called after CSV export
+            -- function(bufnr, file_path) called after query output is loaded into a buffer:
+            -- from the CSV output panel (file_path is the CSV temp file) and from editable/
+            -- readonly result-buffer output, e.g. :DbCliRunAtCursorEditable (file_path is nil).
+            after_query_callback = nil,
         },
         editable = {
             format = 'csv', -- 'csv' (default) or 'tsv' for editable result buffers

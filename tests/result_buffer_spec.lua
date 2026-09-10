@@ -124,6 +124,37 @@ describe("result_buffer", function()
 		end
 	end)
 
+	it("invokes output.csv.after_query_callback with a nil file_path", function()
+		local calls = {}
+		config_mod.current.output.csv.after_query_callback = function(cb_bufnr, file_path)
+			table.insert(calls, { bufnr = cb_bufnr, file_path = file_path })
+		end
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "SELECT * FROM users;" })
+		local result = {
+			data = {
+				column_names = { "id", "name" },
+				rows = { { "1", "Alice" } },
+			},
+		}
+		local context = {
+			query = "select * from users join teams on users.team_id = teams.id",
+			connection_name = "test",
+			adapter_name = "psql",
+		}
+
+		result_buffer.open_from_result(result, context)
+		local new_bufnr = vim.api.nvim_get_current_buf()
+
+		assert.are.equal(1, #calls)
+		assert.are.equal(new_bufnr, calls[1].bufnr)
+		assert.is_nil(calls[1].file_path)
+
+		if vim.api.nvim_buf_is_valid(new_bufnr) then
+			vim.api.nvim_set_current_buf(bufnr)
+			vim.api.nvim_buf_delete(new_bufnr, { force = true })
+		end
+	end)
+
 	it("computes changes from CSV editable format when configured", function()
 		config_mod.current.output.editable.format = "csv"
 		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
