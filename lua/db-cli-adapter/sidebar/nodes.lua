@@ -25,6 +25,10 @@ function M.get_table_id(schema_name, table_name)
 	return "table_" .. schema_name .. "_" .. table_name
 end
 
+function M.get_view_id(schema_name, view_name)
+	return "view_" .. schema_name .. "_" .. view_name
+end
+
 --- Create a new SidebarNode
 --- @param o DbCliAdapter.SidebarNodeData The properties of the node
 --- @param children? table A list of child nodes
@@ -61,16 +65,19 @@ function M.newFolderNode(id, text, children, refresh)
 	}, children)
 end
 
---- Create a new table node
----@param table_row string[] A table with two elements: table name and schema name
----@param children? table A list of child nodes (columns)
+--- Create a new table or view node. Both share the same shape (`schema`/`table_name`
+--- identity fields and a column-listing `refresh`), differing only in id prefix,
+--- icon/highlight, and the wording of the refresh notification.
+---@param table_row string[] A table with two elements: table/view name and schema name
+---@param kind "table"|"view" Determines the id prefix, icon/highlight, and refresh messaging
 ---@return DbCliAdapter.SidebarNodeData|NuiTree.Node A new SidebarNode instance
-function M.newTableNode(table_row)
+local function new_relation_node(table_row, kind)
 	local table_name, schema = unpack(table_row)
+	local get_id = kind == "view" and M.get_view_id or M.get_table_id
 	return M.new_node({
-		id = M.get_table_id(schema, table_name),
-		icon = config.current and config.current.icons.tree.table,
-		icon_hl = config.current and config.current.highlight.tree.table,
+		id = get_id(schema, table_name),
+		icon = config.current and config.current.icons.tree[kind],
+		icon_hl = config.current and config.current.highlight.tree[kind],
 		text = table_name,
 		table_name = table_name,
 		schema = schema,
@@ -89,12 +96,26 @@ function M.newTableNode(table_row)
 					self.count = #column_nodes
 					self:expand()
 					tree:render()
-					vim.notify(string.format("'%s' table refreshed succesfully", table_name), vim.log.levels.INFO)
+					vim.notify(string.format("'%s' %s refreshed succesfully", table_name, kind), vim.log.levels.INFO)
 				end,
 			})
 		end,
 		expandable = true,
 	})
+end
+
+--- Create a new table node
+---@param table_row string[] A table with two elements: table name and schema name
+---@return DbCliAdapter.SidebarNodeData|NuiTree.Node A new SidebarNode instance
+function M.newTableNode(table_row)
+	return new_relation_node(table_row, "table")
+end
+
+--- Create a new view node
+---@param table_row string[] A table with two elements: view name and schema name
+---@return DbCliAdapter.SidebarNodeData|NuiTree.Node A new SidebarNode instance
+function M.newViewNode(table_row)
+	return new_relation_node(table_row, "view")
 end
 
 --- Create a new column node
@@ -146,10 +167,24 @@ function M.newSchemaNode(schema_name)
 					self:expand()
 					self.tables_node:expand()
 					tree:render()
-					vim.notify(
-						string.format("'%s' schema branch refreshed succesfully", schema_name),
-						vim.log.levels.INFO
-					)
+					vim.notify(string.format("'%s' tables refreshed succesfully", schema_name), vim.log.levels.INFO)
+				end,
+			})
+			core.run(adapter:get_views_query(schema_name), {
+				callback = function(result)
+					if not result then
+						vim.notify("Could not refresh the sidebar", vim.log.levels.ERROR)
+						return
+					end
+					local view_nodes = {}
+					for _, row in ipairs(result.data.rows) do
+						table.insert(view_nodes, M.newViewNode(row))
+					end
+					tree:set_nodes(view_nodes, self.views_node:get_id())
+					self.views_node.count = #view_nodes
+					self:expand()
+					tree:render()
+					vim.notify(string.format("'%s' views refreshed succesfully", schema_name), vim.log.levels.INFO)
 				end,
 			})
 		end,

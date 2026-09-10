@@ -57,9 +57,9 @@ function AdapterConfig:new(config)
                 )
             WHERE c.table_schema = '%s'
                 AND c.table_name = '%s';]],
-		views_query = [[SELECT table_name, table_schema 
-		    FROM information_schema.views 
-		    WHERE table_schema NOT IN ('pg_catalog', 'information_schema') 
+		views_query = [[SELECT table_name, table_schema
+		    FROM information_schema.views
+		    WHERE table_schema = '%s'
 		    ORDER by table_name;]],
 	}, config)
 	local o = setmetatable(data, self)
@@ -314,6 +314,17 @@ function AdapterConfig:get_tables_query(schema)
 	return string.format(self.tables_query, escape_sql_literal(schema))
 end
 
+--- Returns the query to list views in the database for a specific schema
+--- @param schema string The schema name to filter views
+--- @return string|fun(connection:DbCliAdapter.base_params): string result The literal query string or a function that returns the query string
+function AdapterConfig:get_views_query(schema)
+	if not self.views_query then
+		vim.notify("Views query not defined for adapter: " .. self.name, vim.log.levels.WARN)
+		return ""
+	end
+	return string.format(self.views_query, escape_sql_literal(schema))
+end
+
 --- Returns the query to list fields/columns of a specific table in a specific schema
 --- @param schema string The schema name where the table resides
 --- @param table string The table name to get columns for
@@ -358,6 +369,36 @@ end
 --- @return string
 function AdapterConfig:quote_identifier(identifier)
 	return string.format('"%s"', tostring(identifier):gsub('"', '""'))
+end
+
+--- Returns a fully-qualified, quoted reference to a table/view within a schema.
+--- Adapters without real schema support (e.g. SQLite) should override this.
+--- @param schema string|nil The schema name, if applicable for this adapter
+--- @param table_name string The table/view name
+--- @return string
+function AdapterConfig:qualify_table_name(schema, table_name)
+	if schema and schema ~= "" then
+		return string.format("%s.%s", self:quote_identifier(schema), self:quote_identifier(table_name))
+	end
+	return self:quote_identifier(table_name)
+end
+
+--- Builds a `SELECT` statement listing explicit columns for a table/view, capped to at most
+--- `limit` rows. The default implementation appends a standard `LIMIT` clause, which covers
+--- every built-in adapter; adapters with a different row-limiting dialect (e.g. `TOP`,
+--- `FETCH FIRST ... ROWS ONLY`) should override this method.
+--- @param schema string|nil The schema name where the table/view resides
+--- @param table_name string The table/view name to select from
+--- @param columns string[] Already-quoted column identifiers to select
+--- @param limit? number Maximum number of rows to return; nil or 0 disables the limit
+--- @return string
+function AdapterConfig:build_select_query(schema, table_name, columns, limit)
+	local statement =
+		string.format("SELECT %s FROM %s", table.concat(columns, ", "), self:qualify_table_name(schema, table_name))
+	if limit and limit > 0 then
+		statement = statement .. string.format(" LIMIT %d", limit)
+	end
+	return statement
 end
 
 --- Formats a value as an SQL literal.
