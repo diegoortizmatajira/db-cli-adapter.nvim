@@ -95,7 +95,8 @@ end
 --- @param name string
 --- @return string
 local function sanitize_filename(name)
-	return (name:gsub("[^%w%-_]", "_"))
+	local sanitized = name:gsub("[^%w%-_]", "_")
+	return (sanitized:gsub("^_+", ""):gsub("_+$", ""))
 end
 
 --- Computes a default, timestamped backup file path for a connection, creating the
