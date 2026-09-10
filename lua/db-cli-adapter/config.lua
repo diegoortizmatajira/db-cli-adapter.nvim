@@ -14,6 +14,11 @@ local C = {
 	--- @type DbCliAdapter.Config
 	default = {
 		connection_change_handler = nil,
+		-- Called whenever the plugin opens a new buffer without an associated file (a
+		-- sidebar-generated SQL buffer, an editable result buffer, or a change-preview
+		-- buffer). Receives the buffer number. See `C.attach_lsp_for_filetype_handler`
+		-- for a ready-made implementation that attaches matching running LSP clients.
+		new_buffer_handler = nil,
 		adapters = {
 			psql = require("db-cli-adapter.builtins.psql"),
 			sqlite = require("db-cli-adapter.builtins.sqlite"),
@@ -154,6 +159,34 @@ function C.sqls_connection_change_handler(_, connection)
 			connections = { connection:as_sqls_connection() },
 		},
 	})
+end
+
+--- Default `new_buffer_handler`: attaches every already-running LSP client whose configured
+--- `filetypes` include the new buffer's filetype to that buffer.
+---
+--- Buffers this plugin opens without a backing file (a sidebar-generated SQL buffer, an
+--- editable result buffer, a change-preview buffer) don't reliably trigger the usual
+--- FileType-driven LSP autostart/root-dir detection. Rather than guessing how to start a
+--- brand new client (server command, root directory and init options are all setup-specific),
+--- this reuses whichever client is already running for that filetype elsewhere in the
+--- session -- e.g. `sqlls`, started for the buffer where the connection was originally
+--- selected. This function can be overridden by setting `new_buffer_handler` in the
+--- configuration.
+--- @param bufnr number The newly opened buffer.
+function C.attach_lsp_for_filetype_handler(bufnr)
+	if not vim.api.nvim_buf_is_valid(bufnr) then
+		return
+	end
+	local filetype = vim.bo[bufnr].filetype
+	if not filetype or filetype == "" then
+		return
+	end
+	for _, client in ipairs(vim.lsp.get_clients()) do
+		local filetypes = client.config and client.config.filetypes
+		if filetypes and vim.tbl_contains(filetypes, filetype) then
+			vim.lsp.buf_attach_client(bufnr, client.id)
+		end
+	end
 end
 
 return C

@@ -146,6 +146,7 @@ local function _open_sql_buffer(connection_name, query)
 	vim.bo[bufnr].filetype = "sql"
 	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(query, "\n"))
 	vim.b[bufnr].db_cli_adapter_connection = connection_name
+	core.trigger_new_buffer(bufnr)
 end
 
 --- Queries the adapter for a table/view node's columns, returning name/data-type/primary-key

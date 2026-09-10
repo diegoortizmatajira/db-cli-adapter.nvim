@@ -86,6 +86,13 @@ require('db-cli-adapter').setup({
     --   require('db-cli-adapter.config').sqls_connection_change_handler
     connection_change_handler = nil,
 
+    -- Called whenever the plugin opens a new buffer without an associated file (a
+    -- sidebar-generated SQL buffer, an editable result buffer, or a change-preview buffer).
+    -- Receives the buffer number. Use the built-in handler to attach any already-running
+    -- LSP client whose filetypes cover the buffer's filetype (e.g. `sqlls`):
+    --   require('db-cli-adapter.config').attach_lsp_for_filetype_handler
+    new_buffer_handler = nil,
+
     -- Built-in adapters (you can override individual adapter settings)
     adapters = {
         psql   = require('db-cli-adapter.builtins.psql'),
@@ -214,6 +221,20 @@ require('db-cli-adapter').setup({
 
 A `sqls_connection_change_handler` is also available for
 [sqls](https://github.com/lighttiger2505/sqls).
+
+To get LSP features (completion, hover, etc.) in the SQL buffers this plugin opens — from the
+sidebar's `X`/`G`/`I`/`U`/`D` actions, editable result buffers, and change-preview buffers —
+attach `attach_lsp_for_filetype_handler` as the `new_buffer_handler`. These buffers have no
+backing file, so they don't reliably trigger the usual FileType-based LSP autostart; this
+instead attaches whichever client is already running for the buffer's filetype (typically
+`sqlls`, already started via `connection_change_handler` above):
+
+```lua
+require('db-cli-adapter').setup({
+    connection_change_handler = require('db-cli-adapter.config').sqlls_connection_change_handler,
+    new_buffer_handler = require('db-cli-adapter.config').attach_lsp_for_filetype_handler,
+})
+```
 
 ## Usage
 

@@ -122,9 +122,11 @@ local function parse_query_target(query)
 	return nil, "Could not determine target table from query"
 end
 
+--- @return number bufnr, boolean is_new Whether `bufnr` is a fresh buffer created by this call
+--- (as opposed to `target_bufnr` or a reused output-panel buffer)
 local function open_or_reuse_buffer(target_bufnr)
 	if target_bufnr and vim.api.nvim_buf_is_valid(target_bufnr) then
-		return target_bufnr
+		return target_bufnr, false
 	end
 	local has_output, output_panel = pcall(require, "db-cli-adapter.output")
 	if has_output and output_panel and type(output_panel.show) == "function" then
@@ -137,12 +139,12 @@ local function open_or_reuse_buffer(target_bufnr)
 			if output_panel.split.winid and vim.api.nvim_win_is_valid(output_panel.split.winid) then
 				vim.api.nvim_set_current_win(output_panel.split.winid)
 			end
-			return output_panel.split.bufnr
+			return output_panel.split.bufnr, false
 		end
 	end
 	vim.cmd("botright new")
 	local bufnr = vim.api.nvim_get_current_buf()
-	return bufnr
+	return bufnr, true
 end
 
 local function render_result_buffer(bufnr, columns, rows, format)
@@ -270,6 +272,7 @@ local function open_preview_buffer(lines)
 	vim.bo[preview_bufnr].filetype = "sql"
 	vim.bo[preview_bufnr].modifiable = false
 	vim.bo[preview_bufnr].readonly = true
+	core.trigger_new_buffer(preview_bufnr)
 end
 
 local function set_result_state(bufnr, state)
@@ -281,8 +284,11 @@ local function open_result(result, context, table_meta, pk_columns, opts)
 	local format = opts.format or get_editable_format()
 	local columns = (result.data and result.data.column_names) or {}
 	local rows = (result.data and result.data.rows) or {}
-	local bufnr = open_or_reuse_buffer(opts.target_bufnr)
+	local bufnr, is_new = open_or_reuse_buffer(opts.target_bufnr)
 	render_result_buffer(bufnr, columns, rows, format)
+	if is_new then
+		core.trigger_new_buffer(bufnr)
+	end
 
 	local state = {
 		query = context.query,

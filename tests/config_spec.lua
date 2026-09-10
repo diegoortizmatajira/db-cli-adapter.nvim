@@ -54,6 +54,10 @@ describe("config", function()
 			assert.is_table(config.default.output.editable)
 			assert.are.equal("csv", config.default.output.editable.format)
 		end)
+
+		it("has no new_buffer_handler configured by default", function()
+			assert.is_nil(config.default.new_buffer_handler)
+		end)
 	end)
 
 	describe("update", function()
@@ -69,6 +73,57 @@ describe("config", function()
 		it("ignores nil input", function()
 			config.update(nil)
 			assert.is_nil(config.current)
+		end)
+	end)
+
+	describe("attach_lsp_for_filetype_handler", function()
+		local previous_get_clients, previous_buf_attach_client
+		local bufnr
+
+		before_each(function()
+			previous_get_clients = vim.lsp.get_clients
+			previous_buf_attach_client = vim.lsp.buf_attach_client
+			bufnr = vim.api.nvim_create_buf(false, true)
+		end)
+
+		after_each(function()
+			vim.lsp.get_clients = previous_get_clients
+			vim.lsp.buf_attach_client = previous_buf_attach_client
+			if vim.api.nvim_buf_is_valid(bufnr) then
+				vim.api.nvim_buf_delete(bufnr, { force = true })
+			end
+		end)
+
+		it("attaches only clients whose filetypes include the buffer's filetype", function()
+			vim.bo[bufnr].filetype = "sql"
+			vim.lsp.get_clients = function()
+				return {
+					{ id = 1, config = { filetypes = { "sql" } } },
+					{ id = 2, config = { filetypes = { "python" } } },
+				}
+			end
+			local attached = {}
+			vim.lsp.buf_attach_client = function(cb_bufnr, client_id)
+				table.insert(attached, { bufnr = cb_bufnr, client_id = client_id })
+			end
+
+			config.attach_lsp_for_filetype_handler(bufnr)
+
+			assert.are.same({ { bufnr = bufnr, client_id = 1 } }, attached)
+		end)
+
+		it("does nothing when the buffer has no filetype", function()
+			vim.lsp.get_clients = function()
+				error("get_clients should not be called")
+			end
+			config.attach_lsp_for_filetype_handler(bufnr)
+		end)
+
+		it("does nothing for an invalid buffer", function()
+			vim.lsp.get_clients = function()
+				error("get_clients should not be called")
+			end
+			config.attach_lsp_for_filetype_handler(999999)
 		end)
 	end)
 

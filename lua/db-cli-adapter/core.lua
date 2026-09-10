@@ -277,6 +277,16 @@ function M.buffer_has_db_connection()
 	return M.get_buffer_db_connection() ~= nil
 end
 
+--- Notifies the configured `new_buffer_handler` (if any) that a new buffer without an
+--- associated file has just been opened by the plugin (e.g. a sidebar-generated SQL buffer,
+--- an editable result buffer, or a change-preview buffer).
+--- @param bufnr number The newly opened buffer
+function M.trigger_new_buffer(bufnr)
+	if config.current and config.current.new_buffer_handler then
+		config.current.new_buffer_handler(bufnr)
+	end
+end
+
 function M.get_buffer_db_adapter()
 	local connection_name = M.get_buffer_db_connection()
 	if not connection_name then

@@ -83,6 +83,40 @@ describe("result_buffer", function()
 		assert.is_not_nil(err)
 	end)
 
+	it("invokes new_buffer_handler when opening a changes-preview buffer", function()
+		local calls = {}
+		config_mod.current.new_buffer_handler = function(cb_bufnr)
+			table.insert(calls, cb_bufnr)
+		end
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
+			"id\tname\trole",
+			"1\tAlice\teditor",
+		})
+		vim.b[bufnr].db_cli_result_state = {
+			query = "select * from users",
+			connection = "test",
+			adapter_name = "psql",
+			schema = "public",
+			table = "users",
+			columns = { "id", "name", "role" },
+			pk_columns = { "id" },
+			original_rows = {
+				{ id = "1", name = "Alice", role = "admin" },
+			},
+			editable = true,
+		}
+
+		result_buffer.preview_changes(bufnr)
+		local preview_bufnr = vim.api.nvim_get_current_buf()
+
+		assert.are.same({ preview_bufnr }, calls)
+
+		-- The preview buffer is `bufhidden = "wipe"`, so switching away wipes it automatically.
+		if preview_bufnr ~= bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+			vim.api.nvim_set_current_buf(bufnr)
+		end
+	end)
+
 	it("returns error for readonly result buffers", function()
 		vim.b[bufnr].db_cli_result_state = {
 			editable = false,
@@ -153,6 +187,58 @@ describe("result_buffer", function()
 			vim.api.nvim_set_current_buf(bufnr)
 			vim.api.nvim_buf_delete(new_bufnr, { force = true })
 		end
+	end)
+
+	it("invokes new_buffer_handler for a newly opened editable result buffer", function()
+		local calls = {}
+		config_mod.current.new_buffer_handler = function(cb_bufnr)
+			table.insert(calls, cb_bufnr)
+		end
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "SELECT * FROM users;" })
+		local result = {
+			data = {
+				column_names = { "id", "name" },
+				rows = { { "1", "Alice" } },
+			},
+		}
+		local context = {
+			query = "select * from users join teams on users.team_id = teams.id",
+			connection_name = "test",
+			adapter_name = "psql",
+		}
+
+		result_buffer.open_from_result(result, context)
+		local new_bufnr = vim.api.nvim_get_current_buf()
+
+		assert.are.same({ new_bufnr }, calls)
+
+		if vim.api.nvim_buf_is_valid(new_bufnr) then
+			vim.api.nvim_set_current_buf(bufnr)
+			vim.api.nvim_buf_delete(new_bufnr, { force = true })
+		end
+	end)
+
+	it("does not invoke new_buffer_handler when reusing an existing target buffer", function()
+		local calls = {}
+		config_mod.current.new_buffer_handler = function(cb_bufnr)
+			table.insert(calls, cb_bufnr)
+		end
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "SELECT * FROM users;" })
+		local result = {
+			data = {
+				column_names = { "id", "name" },
+				rows = { { "1", "Alice" } },
+			},
+		}
+		local context = {
+			query = "select * from users join teams on users.team_id = teams.id",
+			connection_name = "test",
+			adapter_name = "psql",
+		}
+
+		result_buffer.open_from_result(result, context, { target_bufnr = bufnr })
+
+		assert.are.same({}, calls)
 	end)
 
 	it("computes changes from CSV editable format when configured", function()
