@@ -134,6 +134,109 @@ local function _open_query_buffer()
 	end
 end
 
+--- Opens a new SQL buffer bound to the given connection, pre-filled with the given statement.
+--- @param connection_name string|nil The connection to bind the new buffer to
+--- @param query string The statement(s) to pre-fill the buffer with
+local function _open_sql_buffer(connection_name, query)
+	_open_query_buffer()
+	local bufnr = vim.api.nvim_get_current_buf()
+	vim.bo[bufnr].buftype = "nofile"
+	vim.bo[bufnr].bufhidden = "hide"
+	vim.bo[bufnr].swapfile = false
+	vim.bo[bufnr].filetype = "sql"
+	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(query, "\n"))
+	vim.b[bufnr].db_cli_adapter_connection = connection_name
+end
+
+--- Queries the adapter for a table/view node's columns, returning name/data-type/primary-key
+--- metadata for each. Unlike `_build_select_query`, this always re-queries the adapter (rather
+--- than reusing already-loaded column child nodes) since DDL/DML generation needs the data
+--- type and primary key flag, which child nodes don't carry.
+--- @param node DbCliAdapter.SidebarNodeData|NuiTree.Node A table/view node
+--- @param adapter DbCliAdapter.AdapterConfig The adapter for the sidebar's connection
+--- @param callback fun(columns: DbCliAdapter.ColumnDefinition[]|nil) Called with the resolved columns, or nil on failure
+local function _get_table_columns(node, adapter, callback)
+	core.run(adapter:get_table_columns_query(node.schema, node.table_name), {
+		callback = function(result)
+			if not result or not result.data then
+				vim.notify(string.format("Could not resolve columns for '%s'", node.table_name), vim.log.levels.ERROR)
+				callback(nil)
+				return
+			end
+			local columns = {}
+			for _, row in ipairs(result.data.rows) do
+				local column_name, data_type, is_pk = unpack(row)
+				table.insert(columns, {
+					name = column_name,
+					data_type = data_type,
+					is_primary_key = is_pk == "1" or is_pk == "true" or is_pk == "YES",
+				})
+			end
+			if #columns == 0 then
+				vim.notify(string.format("No columns found for '%s'", node.table_name), vim.log.levels.ERROR)
+				callback(nil)
+				return
+			end
+			callback(columns)
+		end,
+	})
+end
+
+--- Splits a column list into plain names and the subset that are primary key columns.
+--- @param columns DbCliAdapter.ColumnDefinition[]
+--- @return string[] names, string[] pk_names
+local function _column_names_and_pk(columns)
+	local names, pk_names = {}, {}
+	for _, column in ipairs(columns) do
+		table.insert(names, column.name)
+		if column.is_primary_key then
+			table.insert(pk_names, column.name)
+		end
+	end
+	return names, pk_names
+end
+
+--- Builds a `CREATE TABLE`/`CREATE VIEW` DDL statement for a table/view node. Prefers the
+--- adapter's native DDL query (`get_native_ddl_query`/`extract_native_ddl`) when available;
+--- otherwise reconstructs a `CREATE TABLE` from column metadata (tables only — views require
+--- adapter support, since there's no metadata to reconstruct a `SELECT` body from).
+--- @param node DbCliAdapter.SidebarNodeData|NuiTree.Node A table/view node
+--- @param adapter DbCliAdapter.AdapterConfig The adapter for the sidebar's connection
+--- @param callback fun(ddl: string|nil) Called with the DDL statement, or nil on failure
+local function _build_ddl_query(node, adapter, callback)
+	local kind = node.kind or "table"
+	local native_query = adapter:get_native_ddl_query(node.schema, node.table_name, kind)
+	if native_query then
+		core.run(native_query, {
+			callback = function(result)
+				local ddl = adapter:extract_native_ddl(result)
+				if not ddl then
+					vim.notify(string.format("Could not resolve DDL for '%s'", node.table_name), vim.log.levels.ERROR)
+					callback(nil)
+					return
+				end
+				callback(ddl)
+			end,
+		})
+		return
+	end
+	if kind == "view" then
+		vim.notify(
+			string.format("DDL generation for views is not supported by adapter: %s", adapter.name),
+			vim.log.levels.WARN
+		)
+		callback(nil)
+		return
+	end
+	_get_table_columns(node, adapter, function(columns)
+		if not columns then
+			callback(nil)
+			return
+		end
+		callback(adapter:build_create_table_query(node.schema, node.table_name, columns))
+	end)
+end
+
 --- Attempt to expand a tree node if it is expandable and not already expanded.
 --- If the node has a refresh function and is marked as expandable but has no children loaded,
 --- it will call the refresh function to load its children before expanding.
@@ -280,14 +383,108 @@ function M.init()
 					if not query then
 						return
 					end
-					_open_query_buffer()
-					local bufnr = vim.api.nvim_get_current_buf()
-					vim.bo[bufnr].buftype = "nofile"
-					vim.bo[bufnr].bufhidden = "hide"
-					vim.bo[bufnr].swapfile = false
-					vim.bo[bufnr].filetype = "sql"
-					vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { query })
-					vim.b[bufnr].db_cli_adapter_connection = connection_name
+					_open_sql_buffer(connection_name, query)
+				end)
+			end)
+		end)
+	end
+	-- Map keys for opening a new SQL buffer, bound to the sidebar's connection, pre-filled
+	-- with a CREATE TABLE/CREATE VIEW DDL statement for the table/view node under the cursor
+	for _, key in ipairs(config.current.sidebar.keybindings.generate_ddl) do
+		M.split:map("n", key, function()
+			local node = M.tree:get_node()
+			if not _is_relation_node(node) then
+				vim.notify("DbCliAdapter: Select a table or view node to generate DDL", vim.log.levels.WARN)
+				return
+			end
+			_try_refresh_with_adapter(function(_, adapter)
+				local connection_name = core.get_buffer_db_connection()
+				_build_ddl_query(node, adapter, function(ddl)
+					if not ddl then
+						return
+					end
+					_open_sql_buffer(connection_name, ddl)
+				end)
+			end)
+		end)
+	end
+	-- Map keys for opening a new SQL buffer, bound to the sidebar's connection, pre-filled
+	-- with an INSERT scaffold for the table node under the cursor
+	for _, key in ipairs(config.current.sidebar.keybindings.generate_insert) do
+		M.split:map("n", key, function()
+			local node = M.tree:get_node()
+			if not _is_relation_node(node) then
+				vim.notify("DbCliAdapter: Select a table node to generate an INSERT statement", vim.log.levels.WARN)
+				return
+			end
+			if node.kind == "view" then
+				vim.notify("DbCliAdapter: INSERT statements are only supported for tables", vim.log.levels.WARN)
+				return
+			end
+			_try_refresh_with_adapter(function(_, adapter)
+				local connection_name = core.get_buffer_db_connection()
+				_get_table_columns(node, adapter, function(columns)
+					if not columns then
+						return
+					end
+					local names = _column_names_and_pk(columns)
+					_open_sql_buffer(connection_name, adapter:build_insert_query(node.schema, node.table_name, names))
+				end)
+			end)
+		end)
+	end
+	-- Map keys for opening a new SQL buffer, bound to the sidebar's connection, pre-filled
+	-- with an UPDATE scaffold for the table node under the cursor
+	for _, key in ipairs(config.current.sidebar.keybindings.generate_update) do
+		M.split:map("n", key, function()
+			local node = M.tree:get_node()
+			if not _is_relation_node(node) then
+				vim.notify("DbCliAdapter: Select a table node to generate an UPDATE statement", vim.log.levels.WARN)
+				return
+			end
+			if node.kind == "view" then
+				vim.notify("DbCliAdapter: UPDATE statements are only supported for tables", vim.log.levels.WARN)
+				return
+			end
+			_try_refresh_with_adapter(function(_, adapter)
+				local connection_name = core.get_buffer_db_connection()
+				_get_table_columns(node, adapter, function(columns)
+					if not columns then
+						return
+					end
+					local names, pk_names = _column_names_and_pk(columns)
+					_open_sql_buffer(
+						connection_name,
+						adapter:build_update_query(node.schema, node.table_name, names, pk_names)
+					)
+				end)
+			end)
+		end)
+	end
+	-- Map keys for opening a new SQL buffer, bound to the sidebar's connection, pre-filled
+	-- with a DELETE scaffold for the table node under the cursor
+	for _, key in ipairs(config.current.sidebar.keybindings.generate_delete) do
+		M.split:map("n", key, function()
+			local node = M.tree:get_node()
+			if not _is_relation_node(node) then
+				vim.notify("DbCliAdapter: Select a table node to generate a DELETE statement", vim.log.levels.WARN)
+				return
+			end
+			if node.kind == "view" then
+				vim.notify("DbCliAdapter: DELETE statements are only supported for tables", vim.log.levels.WARN)
+				return
+			end
+			_try_refresh_with_adapter(function(_, adapter)
+				local connection_name = core.get_buffer_db_connection()
+				_get_table_columns(node, adapter, function(columns)
+					if not columns then
+						return
+					end
+					local _, pk_names = _column_names_and_pk(columns)
+					_open_sql_buffer(
+						connection_name,
+						adapter:build_delete_query(node.schema, node.table_name, pk_names)
+					)
 				end)
 			end)
 		end)

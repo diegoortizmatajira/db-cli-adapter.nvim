@@ -411,6 +411,131 @@ function AdapterConfig:format_literal(value)
 	return string.format("'%s'", escape_sql_literal(tostring(value)))
 end
 
+--- @class DbCliAdapter.ColumnDefinition
+--- @field name string The column name
+--- @field data_type string The column's reported data type
+--- @field is_primary_key boolean Whether the column is (part of) the primary key
+
+--- Returns a query whose result's single column already holds the full DDL statement for a
+--- table/view, when the adapter has cheap, engine-native access to it (e.g. SQLite's
+--- `sqlite_master.sql`, or a view's stored definition). Returns nil by default: the sidebar
+--- falls back to reconstructing a `CREATE TABLE` from column metadata for tables, and reports
+--- DDL generation as unsupported for views.
+--- @param schema string|nil The schema name where the table/view resides
+--- @param table_name string The table/view name
+--- @param kind "table"|"view" Whether the target is a table or a view
+--- @return string|fun(connection:DbCliAdapter.base_params): string|nil
+function AdapterConfig:get_native_ddl_query(schema, table_name, kind)
+	return nil
+end
+
+--- Extracts the DDL statement text from a `get_native_ddl_query` result. Assumes a single row
+--- whose last column holds the full statement; adapters overriding `get_native_ddl_query` with
+--- a different result shape should override this too.
+--- @param result DbCliAdapter.Output
+--- @return string|nil
+function AdapterConfig:extract_native_ddl(result)
+	local row = result and result.data and result.data.rows and result.data.rows[1]
+	return row and row[#row] or nil
+end
+
+--- Builds a best-effort `CREATE TABLE` statement from column metadata (name, reported data
+--- type, primary key membership). Used as a fallback when the adapter has no cheaper native
+--- DDL query. Does not include defaults, indexes, foreign keys or check constraints.
+--- @param schema string|nil The schema name where the table resides
+--- @param table_name string The table name
+--- @param columns DbCliAdapter.ColumnDefinition[] The table's columns
+--- @return string
+function AdapterConfig:build_create_table_query(schema, table_name, columns)
+	local lines = {}
+	local pk_columns = {}
+	for _, column in ipairs(columns) do
+		table.insert(lines, string.format("  %s %s", self:quote_identifier(column.name), column.data_type))
+		if column.is_primary_key then
+			table.insert(pk_columns, self:quote_identifier(column.name))
+		end
+	end
+	if #pk_columns > 0 then
+		table.insert(lines, string.format("  PRIMARY KEY (%s)", table.concat(pk_columns, ", ")))
+	end
+	return string.format(
+		"CREATE TABLE %s (\n%s\n);",
+		self:qualify_table_name(schema, table_name),
+		table.concat(lines, ",\n")
+	)
+end
+
+--- Builds a `WHERE` clause matching each primary key column to a `?` placeholder, joined with
+--- `AND`. Returns a `<condition>` placeholder when no primary key columns are known.
+--- @param pk_column_names string[]|nil
+--- @return string
+function AdapterConfig:_build_pk_placeholder_where(pk_column_names)
+	if not pk_column_names or #pk_column_names == 0 then
+		return "<condition>"
+	end
+	local predicates = {}
+	for _, name in ipairs(pk_column_names) do
+		table.insert(predicates, string.format("%s = ?", self:quote_identifier(name)))
+	end
+	return table.concat(predicates, " AND ")
+end
+
+--- Builds an `INSERT` scaffold with `?` value placeholders for every column.
+--- @param schema string|nil The schema name where the table resides
+--- @param table_name string The table name
+--- @param column_names string[] The table's column names
+--- @return string
+function AdapterConfig:build_insert_query(schema, table_name, column_names)
+	local quoted_columns = {}
+	local placeholders = {}
+	for _, name in ipairs(column_names) do
+		table.insert(quoted_columns, self:quote_identifier(name))
+		table.insert(placeholders, "?")
+	end
+	return string.format(
+		"INSERT INTO %s (%s)\nVALUES (%s);",
+		self:qualify_table_name(schema, table_name),
+		table.concat(quoted_columns, ", "),
+		table.concat(placeholders, ", ")
+	)
+end
+
+--- Builds an `UPDATE` scaffold with `?` placeholders for every non-primary-key column and a
+--- `WHERE` clause matching primary key columns to `?` placeholders.
+--- @param schema string|nil The schema name where the table resides
+--- @param table_name string The table name
+--- @param column_names string[] The table's column names
+--- @param pk_column_names string[]|nil The table's primary key column names
+--- @return string
+function AdapterConfig:build_update_query(schema, table_name, column_names, pk_column_names)
+	local assignments = {}
+	for _, name in ipairs(column_names) do
+		if not vim.tbl_contains(pk_column_names or {}, name) then
+			table.insert(assignments, string.format("%s = ?", self:quote_identifier(name)))
+		end
+	end
+	return string.format(
+		"UPDATE %s\nSET %s\nWHERE %s;",
+		self:qualify_table_name(schema, table_name),
+		table.concat(assignments, ",\n    "),
+		self:_build_pk_placeholder_where(pk_column_names)
+	)
+end
+
+--- Builds a `DELETE` scaffold with a `WHERE` clause matching primary key columns to `?`
+--- placeholders.
+--- @param schema string|nil The schema name where the table resides
+--- @param table_name string The table name
+--- @param pk_column_names string[]|nil The table's primary key column names
+--- @return string
+function AdapterConfig:build_delete_query(schema, table_name, pk_column_names)
+	return string.format(
+		"DELETE FROM %s\nWHERE %s;",
+		self:qualify_table_name(schema, table_name),
+		self:_build_pk_placeholder_where(pk_column_names)
+	)
+end
+
 --- Returns the query string to be executed
 --- @param command string|fun(connection:DbCliAdapter.base_params): string The command string or a function that returns the command string
 --- @param connection DbCliAdapter.base_params The connection parameters

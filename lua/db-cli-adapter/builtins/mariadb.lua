@@ -141,4 +141,29 @@ ORDER BY kcu.ordinal_position;]],
 	)
 end
 
+--- Returns a view's stored definition wrapped as a full `CREATE VIEW` statement, sourced from
+--- `information_schema.views` rather than `SHOW CREATE VIEW` (whose embedded newlines the
+--- generic pipe-table output parser can't handle). Table DDL has no equally cheap native
+--- query, so it falls back to the generic column-based reconstruction in
+--- `AdapterConfig:build_create_table_query`.
+--- @param schema string|nil
+--- @param table_name string
+--- @param kind "table"|"view"
+--- @return string|nil
+function adapter:get_native_ddl_query(schema, table_name, kind)
+	if kind ~= "view" then
+		return nil
+	end
+	local schema_filter = schema and schema ~= ""
+			and string.format("TABLE_SCHEMA = '%s'", tostring(schema):gsub("'", "''"))
+		or "TABLE_SCHEMA = DATABASE()"
+	return string.format(
+		[[SELECT CONCAT('CREATE VIEW `', TABLE_SCHEMA, '`.`', TABLE_NAME, '` AS ', REPLACE(VIEW_DEFINITION, CHAR(10), ' '))
+    FROM information_schema.views
+    WHERE %s AND TABLE_NAME = '%s';]],
+		schema_filter,
+		tostring(table_name):gsub("'", "''")
+	)
+end
+
 return adapter

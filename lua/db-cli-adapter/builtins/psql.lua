@@ -136,4 +136,28 @@ ORDER BY kcu.ordinal_position;]],
 	)
 end
 
+--- Returns a view's stored definition wrapped as a full `CREATE OR REPLACE VIEW` statement.
+--- Table DDL has no equally cheap native query, so it falls back to the generic column-based
+--- reconstruction in `AdapterConfig:build_create_table_query`.
+--- @param schema string|nil
+--- @param table_name string
+--- @param kind "table"|"view"
+--- @return string|nil
+function adapter:get_native_ddl_query(schema, table_name, kind)
+	if kind ~= "view" then
+		return nil
+	end
+	local schema_filter = schema and schema ~= ""
+			and string.format("schemaname = '%s'", tostring(schema):gsub("'", "''"))
+		or "schemaname = current_schema()"
+	return string.format(
+		[[SELECT 'CREATE OR REPLACE VIEW ' || quote_ident(schemaname) || '.' || quote_ident(viewname)
+        || ' AS ' || replace(definition, chr(10), ' ')
+    FROM pg_views
+    WHERE %s AND viewname = '%s';]],
+		schema_filter,
+		tostring(table_name):gsub("'", "''")
+	)
+end
+
 return adapter

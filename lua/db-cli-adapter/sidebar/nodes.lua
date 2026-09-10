@@ -81,6 +81,7 @@ local function new_relation_node(table_row, kind)
 		text = table_name,
 		table_name = table_name,
 		schema = schema,
+		kind = kind,
 		refresh = function(self, tree, adapter)
 			core.run(adapter:get_table_columns_query(schema, table_name), {
 				callback = function(result)

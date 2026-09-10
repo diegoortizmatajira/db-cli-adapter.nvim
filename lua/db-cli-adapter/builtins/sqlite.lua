@@ -87,6 +87,20 @@ function adapter:qualify_table_name(_, table_name)
 	return self:quote_identifier(table_name)
 end
 
+--- Returns the exact `CREATE TABLE`/`CREATE VIEW` statement SQLite stored for the object,
+--- straight from `sqlite_master`.
+--- @param _ string|nil Ignored (SQLite has no schemas)
+--- @param table_name string
+--- @param kind "table"|"view"
+--- @return string
+function adapter:get_native_ddl_query(_, table_name, kind)
+	return string.format(
+		[[SELECT sql FROM sqlite_master WHERE type = '%s' AND name = '%s';]],
+		kind,
+		tostring(table_name):gsub("'", "''")
+	)
+end
+
 --- Returns query to list PK columns for SQLite tables.
 --- @param _ string|nil
 --- @param table_name string

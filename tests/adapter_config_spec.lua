@@ -188,6 +188,92 @@ describe("AdapterConfig", function()
 		end)
 	end)
 
+	describe("get_native_ddl_query", function()
+		it("returns nil by default", function()
+			assert.is_nil(adapter:get_native_ddl_query("public", "users", "table"))
+			assert.is_nil(adapter:get_native_ddl_query("public", "users", "view"))
+		end)
+	end)
+
+	describe("extract_native_ddl", function()
+		it("returns the last column of the first row", function()
+			local result = { data = { rows = { { "users", "CREATE TABLE users (id int);" } } } }
+			assert.are.equal("CREATE TABLE users (id int);", adapter:extract_native_ddl(result))
+		end)
+
+		it("returns nil when there is no data", function()
+			assert.is_nil(adapter:extract_native_ddl(nil))
+			assert.is_nil(adapter:extract_native_ddl({ data = { rows = {} } }))
+		end)
+	end)
+
+	describe("build_create_table_query", function()
+		it("builds column definitions with a composite primary key", function()
+			local query = adapter:build_create_table_query("public", "users", {
+				{ name = "id", data_type = "integer", is_primary_key = true },
+				{ name = "tenant_id", data_type = "integer", is_primary_key = true },
+				{ name = "name", data_type = "text", is_primary_key = false },
+			})
+			assert.are.equal(
+				[[CREATE TABLE "public"."users" (
+  "id" integer,
+  "tenant_id" integer,
+  "name" text,
+  PRIMARY KEY ("id", "tenant_id")
+);]],
+				query
+			)
+		end)
+
+		it("omits the PRIMARY KEY clause when there is no primary key", function()
+			local query = adapter:build_create_table_query(nil, "logs", {
+				{ name = "message", data_type = "text", is_primary_key = false },
+			})
+			assert.are.equal(
+				[[CREATE TABLE "logs" (
+  "message" text
+);]],
+				query
+			)
+		end)
+	end)
+
+	describe("build_insert_query", function()
+		it("builds an INSERT with a placeholder per column", function()
+			local query = adapter:build_insert_query("public", "users", { "id", "name" })
+			assert.are.equal('INSERT INTO "public"."users" ("id", "name")\nVALUES (?, ?);', query)
+		end)
+	end)
+
+	describe("build_update_query", function()
+		it("sets non-primary-key columns and filters on primary key columns", function()
+			local query = adapter:build_update_query("public", "users", { "id", "name", "email" }, { "id" })
+			assert.are.equal('UPDATE "public"."users"\nSET "name" = ?,\n    "email" = ?\nWHERE "id" = ?;', query)
+		end)
+
+		it("uses a <condition> placeholder when there are no primary key columns", function()
+			local query = adapter:build_update_query(nil, "logs", { "message" }, {})
+			assert.are.equal('UPDATE "logs"\nSET "message" = ?\nWHERE <condition>;', query)
+		end)
+	end)
+
+	describe("build_delete_query", function()
+		it("filters on primary key columns", function()
+			local query = adapter:build_delete_query("public", "users", { "id" })
+			assert.are.equal('DELETE FROM "public"."users"\nWHERE "id" = ?;', query)
+		end)
+
+		it("filters on composite primary key columns", function()
+			local query = adapter:build_delete_query(nil, "users", { "id", "tenant_id" })
+			assert.are.equal('DELETE FROM "users"\nWHERE "id" = ? AND "tenant_id" = ?;', query)
+		end)
+
+		it("uses a <condition> placeholder when there are no primary key columns", function()
+			local query = adapter:build_delete_query(nil, "logs", {})
+			assert.are.equal('DELETE FROM "logs"\nWHERE <condition>;', query)
+		end)
+	end)
+
 	describe("get_table_columns_query", function()
 		it("interpolates schema and table names", function()
 			local query = adapter:get_table_columns_query("public", "users")

@@ -74,6 +74,10 @@ local C = {
 				refresh_all = { "R" },
 				execute_query = { "x" },
 				open_query = { "X" },
+				generate_ddl = { "G" },
+				generate_insert = { "I" },
+				generate_update = { "U" },
+				generate_delete = { "D" },
 			},
 			-- Maximum number of rows returned by the generated `SELECT` statements used by the
 			-- execute_query/open_query sidebar actions. Set to nil or 0 to disable the limit.
