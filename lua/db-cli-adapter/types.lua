@@ -30,6 +30,7 @@
 --- @class DbCliAdapter.SidebarConfig
 --- @field keybindings DbCliAdapter.SidebarKeybindingsConfig Keybindings for sidebar actions
 --- @field query_row_limit? number Max rows returned by generated `SELECT` statements. nil or 0 disables the limit.
+--- @field open_as_temp_file? boolean When true, sidebar-generated SQL buffers are written to and opened from a real temp file instead of an unnamed scratch buffer, so Neovim's native LSP autostart attaches on its own. Defaults to false.
 
 --- @class DbCliAdapter.TreeIcons
 --- @field chevron_open string Icon for an expanded tree node

@@ -88,6 +88,13 @@ local C = {
 			-- execute_query/open_query sidebar actions. Set to nil or 0 to disable the limit.
 			-- The LIMIT syntax itself is applied per-adapter (see AdapterConfig:build_select_query).
 			query_row_limit = 200,
+			-- When true, sidebar-generated SQL buffers (open_query/generate_ddl/generate_insert/
+			-- generate_update/generate_delete) are written to and opened from a real temp file
+			-- instead of an unnamed scratch buffer. This gives the buffer a normal buftype and a
+			-- real path, so Neovim's native LSP autostart (`vim.lsp.enable`) attaches to it on its
+			-- own, without needing `new_buffer_handler`. The temp file is left on disk for the
+			-- rest of the session (same as e.g. the CSV output panel's temp files).
+			open_as_temp_file = false,
 		},
 		output = {
 			csv = {

@@ -122,31 +122,58 @@ local function _build_select_query(node, adapter, callback)
 	})
 end
 
---- Switches to the window the sidebar was opened from and loads a new empty buffer there,
---- like a normal file open. Falls back to a new full-width split if that window is gone
---- (e.g. it was closed) so the buffer never ends up squeezed into the narrow sidebar column.
-local function _open_query_buffer()
+--- Switches to the window the sidebar was opened from, falling back to a new full-width split
+--- if that window is gone (e.g. it was closed), so a generated buffer never ends up squeezed
+--- into the narrow sidebar column.
+--- @return boolean used_fallback_split True if a new split (already holding an empty buffer) was created
+local function _switch_to_query_window()
 	if M.previous_winid and vim.api.nvim_win_is_valid(M.previous_winid) then
 		vim.api.nvim_set_current_win(M.previous_winid)
+		return false
+	end
+	vim.cmd("botright new")
+	return true
+end
+
+--- Switches to the sidebar's origin window and loads a new empty scratch buffer there, like a
+--- normal file open.
+local function _open_query_buffer()
+	if not _switch_to_query_window() then
 		vim.cmd("enew")
-	else
-		vim.cmd("botright new")
 	end
 end
 
 --- Opens a new SQL buffer bound to the given connection, pre-filled with the given statement.
+--- When `sidebar.open_as_temp_file` is enabled, writes the statement to a real temp file and
+--- opens that instead of an unnamed scratch buffer -- giving the buffer a normal buftype and a
+--- real path, so Neovim's native LSP autostart (`vim.lsp.enable`) attaches to it on its own.
 --- @param connection_name string|nil The connection to bind the new buffer to
 --- @param query string The statement(s) to pre-fill the buffer with
 local function _open_sql_buffer(connection_name, query)
-	_open_query_buffer()
-	local bufnr = vim.api.nvim_get_current_buf()
-	vim.bo[bufnr].buftype = "nofile"
-	vim.bo[bufnr].bufhidden = "hide"
-	vim.bo[bufnr].swapfile = false
+	local bufnr
+	if config.current.sidebar.open_as_temp_file then
+		local path = vim.fn.tempname() .. ".sql"
+		vim.fn.writefile(vim.split(query, "\n"), path)
+		_switch_to_query_window()
+		vim.cmd.edit(vim.fn.fnameescape(path))
+		bufnr = vim.api.nvim_get_current_buf()
+	else
+		_open_query_buffer()
+		bufnr = vim.api.nvim_get_current_buf()
+		vim.bo[bufnr].buftype = "nofile"
+		vim.bo[bufnr].bufhidden = "hide"
+		vim.bo[bufnr].swapfile = false
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(query, "\n"))
+	end
 	vim.bo[bufnr].filetype = "sql"
-	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(query, "\n"))
 	vim.b[bufnr].db_cli_adapter_connection = connection_name
+	-- Start/attach the buffer's LSP client first, then notify connection_change_handler so it
+	-- has a running client to push this buffer's connection settings into (e.g. lsp_restart
+	-- is a no-op when no matching client is running yet).
 	core.trigger_new_buffer(bufnr)
+	if connection_name then
+		core.trigger_connection_changed()
+	end
 end
 
 --- Queries the adapter for a table/view node's columns, returning name/data-type/primary-key

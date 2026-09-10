@@ -36,6 +36,10 @@ describe("config", function()
 			assert.is_true(config.default.sidebar.query_row_limit > 0)
 		end)
 
+		it("defaults sidebar.open_as_temp_file to false", function()
+			assert.is_false(config.default.sidebar.open_as_temp_file)
+		end)
+
 		it("has icon configurations", function()
 			assert.is_table(config.default.icons.tree)
 			assert.is_table(config.default.icons.source)
