@@ -88,8 +88,9 @@ require('db-cli-adapter').setup({
 
     -- Called whenever the plugin opens a new buffer without an associated file (a
     -- sidebar-generated SQL buffer, an editable result buffer, or a change-preview buffer).
-    -- Receives the buffer number. Use the built-in handler to attach any already-running
-    -- LSP client whose filetypes cover the buffer's filetype (e.g. `sqlls`):
+    -- Receives the buffer number. Use the built-in handler to start (or reuse an already-
+    -- running instance of) any enabled LSP config covering the buffer's filetype, e.g.
+    -- `sqlls` (requires Neovim 0.11+):
     --   require('db-cli-adapter.config').attach_lsp_for_filetype_handler
     new_buffer_handler = nil,
 
@@ -224,10 +225,12 @@ A `sqls_connection_change_handler` is also available for
 
 To get LSP features (completion, hover, etc.) in the SQL buffers this plugin opens — from the
 sidebar's `X`/`G`/`I`/`U`/`D` actions, editable result buffers, and change-preview buffers —
-attach `attach_lsp_for_filetype_handler` as the `new_buffer_handler`. These buffers have no
-backing file, so they don't reliably trigger the usual FileType-based LSP autostart; this
-instead attaches whichever client is already running for the buffer's filetype (typically
-`sqlls`, already started via `connection_change_handler` above):
+set `attach_lsp_for_filetype_handler` as the `new_buffer_handler`. These buffers have
+`buftype = "nofile"`, which Neovim's own LSP autostart (`vim.lsp.enable`) explicitly never
+attaches to, no matter the filetype; this handler instead calls `vim.lsp.start()` directly,
+which transparently reuses a matching already-running client (e.g. `sqlls`, started via
+`connection_change_handler` above) or starts a new one if none is running yet. Requires
+Neovim 0.11+:
 
 ```lua
 require('db-cli-adapter').setup({

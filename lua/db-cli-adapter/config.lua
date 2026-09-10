@@ -161,17 +161,17 @@ function C.sqls_connection_change_handler(_, connection)
 	})
 end
 
---- Default `new_buffer_handler`: attaches every already-running LSP client whose configured
---- `filetypes` include the new buffer's filetype to that buffer.
+--- Default `new_buffer_handler`: starts (or attaches to an already-running instance of) every
+--- enabled LSP config whose `filetypes` include the new buffer's filetype.
 ---
 --- Buffers this plugin opens without a backing file (a sidebar-generated SQL buffer, an
---- editable result buffer, a change-preview buffer) don't reliably trigger the usual
---- FileType-driven LSP autostart/root-dir detection. Rather than guessing how to start a
---- brand new client (server command, root directory and init options are all setup-specific),
---- this reuses whichever client is already running for that filetype elsewhere in the
---- session -- e.g. `sqlls`, started for the buffer where the connection was originally
---- selected. This function can be overridden by setting `new_buffer_handler` in the
---- configuration.
+--- editable result buffer, a change-preview buffer) have `buftype = "nofile"`, and Neovim's
+--- own FileType-driven LSP autostart (`vim.lsp.enable`) explicitly only attaches to buffers
+--- with an empty or `"help"` buftype -- it never fires for these. This calls `vim.lsp.start()`
+--- directly instead, which transparently reuses a matching already-running client (by name and
+--- root_dir, e.g. `sqlls` started for the buffer where the connection was originally selected)
+--- or starts a new one if none is running yet. Requires Neovim 0.11+ (`vim.lsp.get_configs`).
+--- This function can be overridden by setting `new_buffer_handler` in the configuration.
 --- @param bufnr number The newly opened buffer.
 function C.attach_lsp_for_filetype_handler(bufnr)
 	if not vim.api.nvim_buf_is_valid(bufnr) then
@@ -181,11 +181,8 @@ function C.attach_lsp_for_filetype_handler(bufnr)
 	if not filetype or filetype == "" then
 		return
 	end
-	for _, client in ipairs(vim.lsp.get_clients()) do
-		local filetypes = client.config and client.config.filetypes
-		if filetypes and vim.tbl_contains(filetypes, filetype) then
-			vim.lsp.buf_attach_client(bufnr, client.id)
-		end
+	for _, lsp_config in ipairs(vim.lsp.get_configs({ enabled = true, filetype = filetype })) do
+		vim.lsp.start(lsp_config, { bufnr = bufnr, reuse_client = lsp_config.reuse_client })
 	end
 end
 

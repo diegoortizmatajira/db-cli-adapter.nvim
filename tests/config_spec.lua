@@ -77,51 +77,57 @@ describe("config", function()
 	end)
 
 	describe("attach_lsp_for_filetype_handler", function()
-		local previous_get_clients, previous_buf_attach_client
+		local previous_get_configs, previous_start
 		local bufnr
 
 		before_each(function()
-			previous_get_clients = vim.lsp.get_clients
-			previous_buf_attach_client = vim.lsp.buf_attach_client
+			previous_get_configs = vim.lsp.get_configs
+			previous_start = vim.lsp.start
 			bufnr = vim.api.nvim_create_buf(false, true)
 		end)
 
 		after_each(function()
-			vim.lsp.get_clients = previous_get_clients
-			vim.lsp.buf_attach_client = previous_buf_attach_client
+			vim.lsp.get_configs = previous_get_configs
+			vim.lsp.start = previous_start
 			if vim.api.nvim_buf_is_valid(bufnr) then
 				vim.api.nvim_buf_delete(bufnr, { force = true })
 			end
 		end)
 
-		it("attaches only clients whose filetypes include the buffer's filetype", function()
+		it("starts every enabled config matching the buffer's filetype", function()
 			vim.bo[bufnr].filetype = "sql"
-			vim.lsp.get_clients = function()
+			local requested_filter
+			vim.lsp.get_configs = function(filter)
+				requested_filter = filter
 				return {
-					{ id = 1, config = { filetypes = { "sql" } } },
-					{ id = 2, config = { filetypes = { "python" } } },
+					{ name = "sqlls", filetypes = { "sql" } },
+					{ name = "another_sql_lsp", filetypes = { "sql" } },
 				}
 			end
-			local attached = {}
-			vim.lsp.buf_attach_client = function(cb_bufnr, client_id)
-				table.insert(attached, { bufnr = cb_bufnr, client_id = client_id })
+			local started = {}
+			vim.lsp.start = function(lsp_config, opts)
+				table.insert(started, { name = lsp_config.name, bufnr = opts.bufnr })
 			end
 
 			config.attach_lsp_for_filetype_handler(bufnr)
 
-			assert.are.same({ { bufnr = bufnr, client_id = 1 } }, attached)
+			assert.are.same({ enabled = true, filetype = "sql" }, requested_filter)
+			assert.are.same({
+				{ name = "sqlls", bufnr = bufnr },
+				{ name = "another_sql_lsp", bufnr = bufnr },
+			}, started)
 		end)
 
 		it("does nothing when the buffer has no filetype", function()
-			vim.lsp.get_clients = function()
-				error("get_clients should not be called")
+			vim.lsp.get_configs = function()
+				error("get_configs should not be called")
 			end
 			config.attach_lsp_for_filetype_handler(bufnr)
 		end)
 
 		it("does nothing for an invalid buffer", function()
-			vim.lsp.get_clients = function()
-				error("get_clients should not be called")
+			vim.lsp.get_configs = function()
+				error("get_configs should not be called")
 			end
 			config.attach_lsp_for_filetype_handler(999999)
 		end)
