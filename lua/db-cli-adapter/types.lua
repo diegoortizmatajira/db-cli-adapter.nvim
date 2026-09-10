@@ -22,6 +22,10 @@
 --- @field refresh_all string[] Keybindings to refresh the sidebar
 --- @field execute_query string[] Keybindings to run a `SELECT` query for the table/view node and open the result panel
 --- @field open_query string[] Keybindings to open a SQL buffer pre-filled with a `SELECT` query for the table/view node
+--- @field generate_ddl string[] Keybindings to open a SQL buffer pre-filled with a `CREATE TABLE`/`CREATE VIEW` statement for the table/view node
+--- @field generate_insert string[] Keybindings to open a SQL buffer pre-filled with an `INSERT` scaffold for the table node
+--- @field generate_update string[] Keybindings to open a SQL buffer pre-filled with an `UPDATE` scaffold for the table node
+--- @field generate_delete string[] Keybindings to open a SQL buffer pre-filled with a `DELETE` scaffold for the table node
 
 --- @class DbCliAdapter.SidebarConfig
 --- @field keybindings DbCliAdapter.SidebarKeybindingsConfig Keybindings for sidebar actions
@@ -158,6 +162,7 @@ end
 
 --- @class  DbCliAdapter.Config defines the configuration structure for DbCliAdapter
 --- @field connection_change_handler? fun(bufnr: number, connection_data: DbCliAdapter.ConnectionChangedData) Optional function to handle the restart
+--- @field new_buffer_handler? fun(bufnr: number) Optional function called whenever the plugin opens a new buffer without an associated file (a sidebar-generated SQL buffer, an editable result buffer, or a change-preview buffer). See `DbCliAdapter.config.attach_lsp_for_filetype_handler` for a ready-made implementation that attaches matching running LSP clients.
 --- @field adapters table<string, DbCliAdapter.AdapterConfig> List of adapter configurations
 --- @field sources table<string, string|fun():string> A mapping of source names to their configurations
 --- @field sidebar DbCliAdapter.SidebarConfig Configuration for the sidebar
